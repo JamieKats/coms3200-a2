@@ -64,11 +64,23 @@ class RUSHBSwitch:
         
         
 class RUSHBSwitchLocal(RUSHBSwitch):
+    """
+    open listening port on UDP
+    can connect to global and mixed switches
+
+    Args:
+        RUSHBSwitch (_type_): _description_
+    """
     def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, ip_addresses_cidr, latitude, longitude)
 
 
 class RUSHBSwitchMixed(RUSHBSwitch):
+    """
+    open listening sockets on UDP and TCP for incoming connection from adapters and switches respectively
+    
+    creates outgoing connections to global/mixed switches
+    """
     def __init__(self, type: str, local_ip_addresses_cidr: str, global_ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, local_ip_addresses_cidr, latitude, longitude)
         try:
@@ -80,6 +92,15 @@ class RUSHBSwitchMixed(RUSHBSwitch):
 
 
 class RUSHBSwitchGlobal(RUSHBSwitch):
+    """
+    open listening port on TCP
+    service other switches
+    
+    can create outgoing connectins to global/mixed
+
+    Args:
+        RUSHBSwitch (_type_): _description_
+    """
     def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, ip_addresses_cidr, latitude, longitude)
         
