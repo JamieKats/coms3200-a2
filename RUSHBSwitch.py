@@ -192,7 +192,7 @@ class RUSHBSwitch:
             
             incoming_stdin_queue.put(port)
             
-            
+
     def run_switch(self):
         """
         Once the switch is set up will process all incoming packets/commands
@@ -201,9 +201,38 @@ class RUSHBSwitch:
             _type_: _description_
         """
         while True:
+            self.process_connect_commands()
+            
             time.sleep(0.1)
         
-        
+    def process_connect_commands(self):
+        """
+        Creates TCP connections to global/mixed switches
+
+        Returns:
+            _type_: _description_
+        """
+        while True:
+            # try:
+            port = self.incoming_stdin_queue.get(block=False)
+            # except
+            
+            switch_socket = self.connect_to_switch(port)
+            
+            # start thread listening for incoming tcp packets from host
+            
+            # start greeting protocol
+            
+            
+            
+            
+    def connect_to_switch(self, port: int):
+        switch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            switch_socket.connect((HOST_IP, port))
+        except ConnectionRefusedError:
+            return None
+        return switch_socket
         
         
         
