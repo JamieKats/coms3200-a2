@@ -6,6 +6,11 @@ Switch has three forms
     - global
     - mixed
     
+switches open their listening ports immediately and print them, mixed show UDP port first
+
+local and global can create outgoping connections to switches and take stdin to connect to other switches.
+mixed switches ignore all stdin
+    
 QUESTIONS
     - How do you know what size data in the data pkt you receive? if mulitple 
     msgs in buffer then need to know how big data packet is so you dont read into the next packet in the buffer
@@ -14,8 +19,16 @@ import struct
 import ipaddress
 import socket
 import sys
+import client_connection
+import threading
+import queue
+import time
+
+HOST_IP = "127.0.0.1"
 
 MAX_LAT_LONG = 32767
+
+BUFFER_SIZE = 1500
 
 class RUSHBSwitch:
     
@@ -29,6 +42,8 @@ class RUSHBSwitch:
         self.ip_addresses_cidr: str = ip_addresses_cidr
         self.latitude: int = latitude
         self.longitude: int = longitude
+        self.incoming_tcp_packet_queue = queue.Queue()
+        self.incoming_stdin_queue = queue.Queue()
         
     
     def check_valid_args(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> bool:
@@ -59,27 +74,175 @@ class RUSHBSwitch:
             bool: _description_
         """
         
-    def run(self):
-        print(self.ip_addresses_cidr)
+    def start(self):
+        self.setup_listening_ports()
+        self.setup_command_line()
+        
+        self.run_switch()
+        
+    def setup_listening_ports(self):
+        raise NotImplementedError
+    
+    def init_udp_socket(self) -> socket.socket:
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.bind((HOST_IP, 0))
+        
+        # print udp port
+        print(f"udp port: {udp_socket.getsockname()[1]}")
+        
+        return udp_socket
+        
+    def init_tcp_socket(self) -> socket.socket:
+        tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        tcp_socket.bind((HOST_IP, 0))
+        tcp_socket.listen()
+        
+        # print port bound
+        print(f"tcp port: {tcp_socket.getsockname()[1]}")
+        
+        return tcp_socket
+    
+    def listen_udp_socket_thread(self, udp_socket: socket.socket):
+        """
+        receives incoming messages on udp and adds them to the incoming 
+        message queue
+        """
+        while True:
+            packet_information = udp_socket.recvfrom(BUFFER_SIZE)
+            message = packet_information[0]
+            addr = packet_information[1]
+            
+            # process udp packet here, might need to move udp packet processing out
+            # via an outgoing udp packet queue
+
+            
+        
+    def listen_tcp_socket_thread(self, tcp_socket):
+        """
+        accepts incoming connections and starts connections threads 
+
+        Returns:
+            _type_: _description_
+        """
+        while True:
+            try:
+                conn_socket, addr = tcp_socket.accept()
+            except OSError:
+                return
+            
+            # create client connection instance
+            client = client_connection.ClientConnection(conn_socket)
+            
+            # create thread to handle client incoming messages
+            client_listener_thread = threading.Thread(
+                target=self.client_listen_thread,
+                args=(client, ),
+                daemon=True)
+            
+            client_listener_thread.start()
+            
+            
+    def client_listen_thread(self, client: client_connection.ClientConnection):
+        
+        while True:
+            try:
+                packet = client.receive_message()
+            except ConnectionResetError:
+                return
+            
+            # add message received to message queue
+            self.incoming_tcp_packet_queue.put(packet)
+            
+    def setup_command_line(self):
+        pass
+            
+    def create_stdin_thread(self):
+        """
+        Create a thread to handle commands from stdin and put into incoming 
+        command queue
+
+        Returns:
+            _type_: _description_
+        """
+        stdin_thread = threading.Thread(
+            target=self.stdin_listener_thread,
+            args=(self.incoming_stdin_queue, ),
+            daemon=True)
+        stdin_thread.start()
+        
+        
+    def stdin_listener_thread(self, incoming_stdin_queue: queue.Queue):
+         while True:
+            try:
+                command = input().strip().split(" ")
+            except EOFError:
+                continue
+            
+            if len(command) < 2: continue
+            
+            if command[0] != "connect": continue
+            
+            try:
+                port = int(command[1])
+            except ValueError:
+                continue
+            
+            print(f"Connecting to port: {port}")
+            
+            incoming_stdin_queue.put(port)
+            
+            
+    def run_switch(self):
+        """
+        Once the switch is set up will process all incoming packets/commands
+
+        Returns:
+            _type_: _description_
+        """
+        while True:
+            time.sleep(0.1)
+        
+        
+        
         
         
 class RUSHBSwitchLocal(RUSHBSwitch):
     """
-    open listening port on UDP
-    can connect to global and mixed switches
+    open listening port on UDP to serve adapter
+    can connect to global and mixed switches by TCP? i think
 
     Args:
         RUSHBSwitch (_type_): _description_
     """
     def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, ip_addresses_cidr, latitude, longitude)
+        
+    def setup_listening_ports(self):
+        # create udp socket
+        udp_socket = self.init_udp_socket()
+        
+        # open UDP listen port for incoming adapter messages
+        udp_listener_thread = threading.Thread(
+            target=self.listen_udp_socket_thread,
+            args=(udp_socket, ),
+            daemon=True)
+        udp_listener_thread.start()
+        
+        # doesnt open a tcp listening port, only connects outwards to other 
+        # TCP ports i think
+        
+        return
+    
+    def setup_command_line(self):
+        self.create_stdin_thread()
 
 
 class RUSHBSwitchMixed(RUSHBSwitch):
     """
     open listening sockets on UDP and TCP for incoming connection from adapters and switches respectively
     
-    creates outgoing connections to global/mixed switches
+    creates outgoing connections to global/mixed switches on TCP
     """
     def __init__(self, type: str, local_ip_addresses_cidr: str, global_ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, local_ip_addresses_cidr, latitude, longitude)
@@ -90,11 +253,31 @@ class RUSHBSwitchMixed(RUSHBSwitch):
         
         self.global_ip_addresses_cidr = global_ip_addresses_cidr
 
+    def setup_listening_ports(self):
+        #################### SET UP UDP LISTENER FOR ADAPTERS
+        # upen udp listen port for incoming adapter packets
+        udp_socket = self.init_udp_socket()
+        
+        # open UDP listen port for incoming adapter messages
+        udp_listener_thread = threading.Thread(
+            target=self.listen_udp_socket_thread,
+            args=(udp_socket, ),
+            daemon=True)
+        udp_listener_thread.start()
+        
+        #################### SET UP TCP LISTENER FOR SWITCHES
+        tcp_socket = self.init_tcp_socket()
+        
+        tcp_listener_thread = threading.Thread(
+            target=self.listen_tcp_socket_thread,
+            args=(tcp_socket, ),
+            daemon=True)
+        tcp_listener_thread.start()
+        
 
 class RUSHBSwitchGlobal(RUSHBSwitch):
     """
-    open listening port on TCP
-    service other switches
+    open listening port on TCP for service other switches
     
     can create outgoing connectins to global/mixed
 
@@ -104,7 +287,21 @@ class RUSHBSwitchGlobal(RUSHBSwitch):
     def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
         super().__init__(type, ip_addresses_cidr, latitude, longitude)
         
+    def setup_listening_ports(self):
+        #################### SET UP TCP LISTENER FOR SWITCHES
+        tcp_socket = self.init_tcp_socket()
         
+        tcp_listener_thread = threading.Thread(
+            target=self.listen_tcp_socket_thread,
+            args=(tcp_socket, ),
+            daemon=True)
+        tcp_listener_thread.start()
+        
+    def setup_command_line(self):
+        self.create_stdin_thread()
+        
+        
+########################## FUNCTIONS WITHOUT CLASSES
 def process_arguments():
     """
     commands provided to this file are different for local mixed and global switched
@@ -168,7 +365,7 @@ def main():
     
     switch = process_arguments()
     
-    switch.run()
+    switch.start()
 
 if __name__ == "__main__":
     main()
