@@ -25,11 +25,11 @@ class Device:
     def set_longitude(self, longitude: int):
         self.longitude = longitude  
         
-    def receive_message(self):
-        SenderReceiver.receive_message()
+    def receive_packet(self):
+        return SenderReceiver.receive_packet(conn_socket=self.conn_socket)
         
-    def send_message(self):
-        SenderReceiver.send_message()
+    def send_packet(self, packet: bytes):
+        SenderReceiver.send_packet(packet=packet, conn_socket=self.conn_socket)
         
 class Switch(Device):
     def __init__(self, conn_socket) -> None:
@@ -42,8 +42,13 @@ class ClientSwitch(Switch):
 class HostSwitch(Switch):
     def __init__(self, conn_socket) -> None:
         super().__init__(conn_socket)
-        self.host_ip = 
+        self.host_ip = None
+        
+    def set_host_ip(self, host_ip):
+        self.host_ip = host_ip
     
 class ClientAdapter(Device):
     def __init__(self, conn_socket) -> None:
         super().__init__(conn_socket)
+        
+        

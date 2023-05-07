@@ -11,6 +11,13 @@ switches open their listening ports immediately and print them, mixed show UDP p
 local and global can create outgoping connections to switches and take stdin to connect to other switches.
 mixed switches ignore all stdin
     
+TEST STRINGS
+# local switch
+python3 RUSHBSwitch.py local 1.2.3.4/24 10 20
+
+# mixed switch
+python3 RUSHBSwitch.py local 2.3.4.5/24 12.12.12.12/24 49 50
+
 QUESTIONS
     - How do you know what size data in the data pkt you receive? if mulitple 
     msgs in buffer then need to know how big data packet is so you dont read into the next packet in the buffer
@@ -19,10 +26,11 @@ import struct
 import ipaddress
 import socket
 import sys
-import client_connection
+import device
 import threading
 import queue
 import time
+import packet
 
 HOST_IP = "127.0.0.1"
 
@@ -32,30 +40,71 @@ BUFFER_SIZE = 1500
 
 class RUSHBSwitch:
     
-    def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
+    def __init__(
+        self, 
+        switch_type: str, 
+        latitude: int, 
+        longitude: int, 
+        local_ip_addresses_cidr: str=None, 
+        global_ip_addresses_cidr: str=None
+    ) -> None:
         """_summary_
         """
-        if self.check_valid_args(type, ip_addresses_cidr, latitude, longitude) == False:
+        if self.check_valid_args(
+            switch_type, 
+            local_ip_addresses_cidr, 
+            global_ip_addresses_cidr, 
+            latitude, 
+            longitude) == False:
+            
             exit(1)
+            
+        print(ipaddress.ip_network(ip_addresses_cidr, strict=False))
+        print(type(ipaddress.ip_network(ip_addresses_cidr, strict=False)))
+        # print(list(ipaddress.ip_network(ip_addresses_cidr, strict=False)))
+        print(iter(ipaddress.ip_network(ip_addresses_cidr, strict=False)))
+        ip_iter = iter(ipaddress.ip_network(ip_addresses_cidr, strict=False))
+        print(next(ip_iter))
+        # for ip in ipaddress.ip_network(ip_addresses_cidr, strict=False):
+        #     print(ip)
         
-        self.type: str = type
-        self.ip_addresses_cidr: str = ip_addresses_cidr
+        self.type: str = switch_type
+        self.ip_addresses_cidr: ipaddress.ip_network = ipaddress.ip_network(ip_addresses_cidr, strict=False)
         self.latitude: int = latitude
         self.longitude: int = longitude
         self.incoming_tcp_packet_queue = queue.Queue()
         self.incoming_stdin_queue = queue.Queue()
         
+        self.clients = {}
+        self.hosts = {}
+        
+        # set host ip with ipaddress.ip_network iterator
+        self.set_host_ip()
     
-    def check_valid_args(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> bool:
+    def check_valid_args(
+        self, 
+        type: str, 
+        local_ip_addresses_cidr: str, 
+        global_ip_addresses_cidr: str, 
+        latitude: int, 
+        longitude: int
+    ) -> bool:
         # check type is either "global" or "local"
         if type in ["local", "global"] == False: return False
         
         # check ip address is valid CIDR notation
         # https://stackoverflow.com/questions/45988215/python-how-to-validate-an-ip-address-with-a-cidr-notation-import-socket
-        try:
-            ipaddress.ip_network(ip_addresses_cidr, strict=False)
-        except ValueError:
-            return False
+        if local_ip_addresses_cidr != None:
+            try:
+                ipaddress.ip_network(local_ip_addresses_cidr, strict=False)
+            except ValueError:
+                return False
+            
+        if global_ip_addresses_cidr != None:
+            try:
+                ipaddress.ip_network(global_ip_addresses_cidr, strict=False)
+            except ValueError:
+                return False
         
         # check latitude and longitude in range of 0 -> 32767 inclusive
         if latitude in range(0, MAX_LAT_LONG + 1) == False \
@@ -73,6 +122,13 @@ class RUSHBSwitch:
         Returns:
             bool: _description_
         """
+        
+    def set_host_ip(self, ip_addresses_cidr):
+        self.ip_addrs_iter = iter(ip_addresses_cidr)
+        self.host_ip = next(self.ip_addrs_iter)
+        
+    def get_client_ip(self):
+        return next(self.ip_addrs_iter)
         
     def start(self):
         self.setup_listening_ports()
@@ -132,7 +188,7 @@ class RUSHBSwitch:
                 return
             
             # create client connection instance
-            client = client_connection.ClientConnection(conn_socket)
+            client = device.ClientSwitch(conn_socket)
             
             # create thread to handle client incoming messages
             client_listener_thread = threading.Thread(
@@ -143,14 +199,18 @@ class RUSHBSwitch:
             client_listener_thread.start()
             
             
-    def client_listen_thread(self, client: client_connection.ClientConnection):
+    def client_listen_thread(self, client: device.Device):
+        # complete greeting protocol then enter while loop
+        packet = client.receive_packet()
+        
         
         while True:
             try:
-                packet = client.receive_message()
+                packet = client.receive_packet()
             except ConnectionResetError:
                 return
             
+            # print(f"received packet = {packet}")
             # add message received to message queue
             self.incoming_tcp_packet_queue.put(packet)
             
@@ -213,15 +273,31 @@ class RUSHBSwitch:
             _type_: _description_
         """
         while True:
-            # try:
-            port = self.incoming_stdin_queue.get(block=False)
-            # except
+            try:
+                port = self.incoming_stdin_queue.get(block=False)
+            except queue.Empty:
+                return
             
             switch_socket = self.connect_to_switch(port)
             
+            # create client switch object
+            host = device.HostSwitch(conn_socket=switch_socket)
+            
+            # greeting protocol needs to complete before client (self) can 
+            # receive any message from host
+            # greeting protocol needs to begin in its own thread, greeting protocol can hang indefinitely
+            greeting_thread = threading.Thread(
+                target=self.greeting_protocol,
+                args=(host, ),
+                daemon=True
+            )
+            greeting_thread.start()
+            
+            # complete greeting protocol
+            
+            
             # start thread listening for incoming tcp packets from host
             
-            # start greeting protocol
             
             
             
@@ -233,6 +309,19 @@ class RUSHBSwitch:
         except ConnectionRefusedError:
             return None
         return switch_socket
+    
+    
+    def greeting_protocol(self, host: device.HostSwitch):
+        # send host dicsovery packet
+        discovery_pkt = packet.Packet(
+            mode=packet.DISCOVERY_01
+            )
+        discovery_pkt = discovery_pkt.to_bytes()
+        
+        host.send_packet(discovery_pkt)
+        
+        time.sleep(10)
+        
         
         
         
@@ -244,8 +333,8 @@ class RUSHBSwitchLocal(RUSHBSwitch):
     Args:
         RUSHBSwitch (_type_): _description_
     """
-    def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
-        super().__init__(type, ip_addresses_cidr, latitude, longitude)
+    def __init__(self, switch_type: str, latitude: int, longitude: int, local_ip_addresses_cidr: str = None, global_ip_addresses_cidr: str = None) -> None:
+        super().__init__(switch_type, latitude, longitude, local_ip_addresses_cidr, global_ip_addresses_cidr)
         
     def setup_listening_ports(self):
         # create udp socket
@@ -273,8 +362,8 @@ class RUSHBSwitchMixed(RUSHBSwitch):
     
     creates outgoing connections to global/mixed switches on TCP
     """
-    def __init__(self, type: str, local_ip_addresses_cidr: str, global_ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
-        super().__init__(type, local_ip_addresses_cidr, latitude, longitude)
+    def __init__(self, switch_type: str, latitude: int, longitude: int, local_ip_addresses_cidr: str = None, global_ip_addresses_cidr: str = None) -> None:
+        super().__init__(switch_type, latitude, longitude, local_ip_addresses_cidr, global_ip_addresses_cidr)
         try:
             ipaddress.ip_network(global_ip_addresses_cidr, strict=False)
         except ValueError:
@@ -313,8 +402,8 @@ class RUSHBSwitchGlobal(RUSHBSwitch):
     Args:
         RUSHBSwitch (_type_): _description_
     """
-    def __init__(self, type: str, ip_addresses_cidr: str, latitude: int, longitude: int) -> None:
-        super().__init__(type, ip_addresses_cidr, latitude, longitude)
+    def __init__(self, switch_type: str, latitude: int, longitude: int, local_ip_addresses_cidr: str = None, global_ip_addresses_cidr: str = None) -> None:
+        super().__init__(switch_type, latitude, longitude, local_ip_addresses_cidr, global_ip_addresses_cidr)
         
     def setup_listening_ports(self):
         #################### SET UP TCP LISTENER FOR SWITCHES
@@ -358,6 +447,8 @@ def process_arguments():
     
     
 def check_local_switch():
+    if len(sys.argv) != 5: return
+    
     type = sys.argv[1]
     ip_addresses_cidr = sys.argv[2]
     latitude = sys.argv[3]

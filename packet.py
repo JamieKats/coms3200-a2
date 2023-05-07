@@ -16,7 +16,7 @@ FRAGMENT_END_0B = 0x0b
 
 class Packet:
     
-    def __init__(self, mode: bytes, offset: int, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0") -> None:
+    def __init__(self, mode: bytes, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0") -> None:
         self.src_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(src_ip) # 4 bytes
         self.dest_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(dest_ip) # 4 bytes
         self.mode: bytes = mode # 1 byte
