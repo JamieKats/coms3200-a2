@@ -12,6 +12,7 @@ TODO remove all instances of todo print statements in all files
 """
 import json
 import socket
+import packet as pkt
 
 MAX_BUFFER_SIZE = 1500
 
@@ -19,7 +20,7 @@ MAX_BUFFER_SIZE = 1500
 class SenderReceiver:
     
     @staticmethod
-    def send_packet(packet: bytes, conn_socket: socket) -> bool:
+    def send_packet(packet: pkt.Packet, conn_socket: socket) -> bool:
         """
         Sends the given message to the given TCP socket.
         
@@ -35,10 +36,11 @@ class SenderReceiver:
             Typically False indicates an issue with the socket e.g. a 
             closed socket.
         """
+        packet_bytes = packet.to_bytes()
         # send the message length and the message
-        print(f"sending pkt {packet}")
+        # print(f"sending pkt {packet}")
         try:
-            conn_socket.sendall(packet)
+            conn_socket.sendall(packet_bytes)
         except BrokenPipeError or ConnectionResetError:
             return False
         
@@ -46,7 +48,7 @@ class SenderReceiver:
         
         
     @staticmethod
-    def receive_packet(conn_socket: socket) -> dict:
+    def receive_packet(conn_socket: socket) -> pkt.Packet:
         """
         Receive message over TCP.
         
@@ -65,10 +67,17 @@ class SenderReceiver:
         """
         # receive the message length
         try:
-            packet = conn_socket.recv(MAX_BUFFER_SIZE)
+            packet_bytes = conn_socket.recv(MAX_BUFFER_SIZE)
         except OSError:
             return None
-        # print(f"received pkt: {packet}")
+        # print(f"received pkt: {packet_bytes}")
+        # convert packet into header to check mode
+        packet_header: pkt.Packet = pkt.Packet.from_bytes(packet_bytes)
+        
+        if packet_header.mode == pkt.DISCOVERY_01:
+            packet = pkt.DiscoveryPacket.from_bytes(packet_bytes)
+        else:
+            print(f"recevied mode: {packet_header.mode}")
 
         return packet
                 

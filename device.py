@@ -8,6 +8,7 @@ this class might be used for UDP connections also later?? just tcp for now
 import socket
 import ipaddress
 from sender_receiver import SenderReceiver
+import packet as pkt
 
 class Device:
     def __init__(self, conn_socket) -> None:
@@ -25,10 +26,10 @@ class Device:
     def set_longitude(self, longitude: int):
         self.longitude = longitude  
         
-    def receive_packet(self):
+    def receive_packet(self) -> pkt.Packet:
         return SenderReceiver.receive_packet(conn_socket=self.conn_socket)
         
-    def send_packet(self, packet: bytes):
+    def send_packet(self, packet: pkt.Packet):
         SenderReceiver.send_packet(packet=packet, conn_socket=self.conn_socket)
         
 class Switch(Device):

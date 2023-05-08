@@ -14,29 +14,93 @@ LOCATION_08 = 0x08
 FRAGMENT_0A = 0x0a
 FRAGMENT_END_0B = 0x0b
 
+HEADER_SIZE = 12 # bytes
+
+# def header_from_bytes(data: bytearray):
+#     unpacked_data = struct.unpack("!i i i L", data)
+#     mode = unpacked_data[3]
+#     offset = unpacked_data[2]
+#     src_ip = str(ipaddress.IPv4Address(unpacked_data[0]))
+#     dest_ip = str(ipaddress.IPv4Address(unpacked_data[1]))
+#     # print(unpacked_data)
+#     # print(ipaddress.IPv4Address(unpacked_data[0]))
+#     # print(ipaddress.IPv4Address(unpacked_data[1]))
+#     return Packet(mode=mode, offset=offset, src_ip=src_ip, dest_ip=dest_ip)
+
+
 class Packet:
     
-    def __init__(self, mode: bytes, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0") -> None:
+    def __init__(self, mode: bytes, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0", data=None) -> None:
         self.src_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(src_ip) # 4 bytes
         self.dest_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(dest_ip) # 4 bytes
-        self.mode: bytes = mode # 1 byte
+        # self.mode: bytes = bytearray(mode) # 1 byte
+        # self.mode: bytes = int.to_bytes(mode, 1, 'big') # 1 byte
+        self.mode: int = mode # 1 byte
+        # print(type(self.mode))
+        # print(f"mode in packet init: {self.mode}")
+        # print(f"mode in packet init: {mode}")
+        # print(len(self.mode))
         self.offset: int = offset # 3 bytes
-        self.date = None # any length
+        self.data = None # any length
         
     def to_bytes(self):
-        return struct.pack("!i i i L", int(self.src_ip), int(self.dest_ip), self.offset, self.mode)
+        # print(f"mode in to bytes: {self.mode}")
+        # print(len(self.mode))
+        offset_bytes = self.offset.to_bytes(3, 'big')
+        mode_bytes = self.mode.to_bytes(1, 'big')
+        offset_mode_as_int = int.from_bytes(offset_bytes + mode_bytes, "big")
+        # print(f"offset mode as int: {offset_mode_as_int}")
+        # # print(f"offset mode bytes: {offset_mode_bytes}")
+        # # print(self.offset)
+        # # print(len(bytes(self.offset)))
+        # # print(len(self.mode))
+        # # print(f"offset mode as int: {int(offset_mode_bytes)}")
+        # print(f"struct packed: {struct.pack('!i i i', int(self.src_ip), int(self.dest_ip), offset_mode_as_int)}")
+        # print(f"struct len: {len(struct.pack('!i i i', int(self.src_ip), int(self.dest_ip), offset_mode_as_int))}")
+        return struct.pack("!i i i", int(self.src_ip), int(self.dest_ip), offset_mode_as_int)
+        # return struct.pack("!i i i L", int(self.src_ip), int(self.dest_ip), self.offset, self.mode)
     
     @staticmethod
-    def fromBytes(data):
-        unpacked_data = struct.unpack("!i i i L", data)
-        mode = unpacked_data[3]
-        offset = unpacked_data[2]
+    def from_bytes(data_bytes):
+        unpacked_data = struct.unpack("!i i i", data_bytes[:HEADER_SIZE])
         src_ip = str(ipaddress.IPv4Address(unpacked_data[0]))
         dest_ip = str(ipaddress.IPv4Address(unpacked_data[1]))
+        # offset = int.to_bytes(data_bytes[2][8:11], 4)
+        offset = int.from_bytes(data_bytes[8:11], 'big')
+        # mode = unpacked_data[2][11:]
+        mode = int.from_bytes(data_bytes[11:HEADER_SIZE], 'big')
         # print(unpacked_data)
-        # print(ipaddress.IPv4Address(unpacked_data[0]))
-        # print(ipaddress.IPv4Address(unpacked_data[1]))
+        # print(f"src_ip: {src_ip}")
+        # print(f"dest_ip: {dest_ip}")
+        # print(f"offset: {offset}")
+        # print(f"mode: {mode}")
         return Packet(mode=mode, offset=offset, src_ip=src_ip, dest_ip=dest_ip)
+    
+    # @staticmethod
+    # def discovery_packet():
+    #     disc_pkt: Packet = Packet(mode=DISCOVERY_01)
+    #     disc_pkt.data = ipaddress.IPv4Address("0.0.0.0")
+    #     # header = Packet(mode=DISCOVERY_01).to_bytes()
+    #     # data = struct.pack("!i", int(ipaddress.IPv4Address("0.0.0.0")))
+    #     return header + data
+    
+class DiscoveryPacket(Packet):
+    def __init__(self) -> None:
+        # print(f"mode in dis packet init: {DISCOVERY_01}")
+        super().__init__(mode=DISCOVERY_01, data=ipaddress.IPv4Address("0.0.0.0"))
+        
+    def to_bytes(self):
+        self.data = ipaddress.IPv4Address('0.0.0.0')
+        return super().to_bytes() + struct.pack("!i", int(self.data))
+    
+    @staticmethod
+    def from_bytes(data_bytes) -> Packet:
+        disc_packet: Packet = Packet.from_bytes(data_bytes)
+        unpacked_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        disc_packet.data = ipaddress.IPv4Address(unpacked_data[0])
+        return disc_packet
+        
+        
     
 # def ip2long(ip):
 #     """
@@ -47,9 +111,9 @@ class Packet:
 #     # return struct.unpack("!L", packedIP)[0]
 # # print(struct.calcsize("4i "))
 
-x = Packet(DISCOVERY_01, 10, "1.2.3.4", "10.12.34.2")
-print(x.to_bytes())
+# x = Packet(DISCOVERY_01, 10, "1.2.3.4", "10.12.34.2")
+# print(x.to_bytes())
 
-received_pkt = Packet.fromBytes(x.to_bytes())
+# received_pkt = Packet.from_bytes(x.to_bytes())
 
-print(received_pkt.dest_ip)
+# print(received_pkt.dest_ip)
