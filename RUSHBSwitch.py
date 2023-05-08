@@ -30,6 +30,7 @@ QUESTIONS
     x.x.x.10
     - linking with qn above, in example where 130.102.72.10/24 is given as the global ip
     what would be the two ips you dont count in the 256 total ips in a /24 network??
+    - is there any need for the client to save the IP address
 """
 import struct
 import ipaddress
@@ -40,6 +41,7 @@ import threading
 import queue
 import time
 import packet as pkt
+from connected_devices import ConnectedDevices
 
 HOST_IP = "127.0.0.1"
 
@@ -89,8 +91,9 @@ class RUSHBSwitch:
         self.incoming_stdin_queue = queue.Queue()
         
         # initi empty clients and hosts maps
-        self.clients = {}
-        self.hosts = {}
+        # self.clients = {}
+        # self.hosts = {}
+        self.connected_devices = ConnectedDevices()
         
         # set host ip with ipaddress.ip_network iterator
         self.set_global_ip(global_ip_addresses_cidr)
@@ -244,16 +247,19 @@ class RUSHBSwitch:
     def client_listen_thread(self, client: device.Device):
         # complete greeting protocol then enter while loop
         discovery_packet: pkt.DiscoveryPacket = client.receive_packet()
-        print(f"recevied pkt src_ip: {discovery_packet.src_ip}")
-        print(f"recevied pkt dst_ip: {discovery_packet.dest_ip}")
-        print(f"recevied pkt offset: {discovery_packet.offset}")
-        print(f"recevied pkt mode: {discovery_packet.mode}")
-        print(f"recevied pkt data: {discovery_packet.data}")
+        # print(f"recevied pkt src_ip: {discovery_packet.src_ip}")
+        # print(f"recevied pkt dst_ip: {discovery_packet.dest_ip}")
+        # print(f"recevied pkt offset: {discovery_packet.offset}")
+        # print(f"recevied pkt mode: {discovery_packet.mode}")
+        # print(f"recevied pkt data: {discovery_packet.data}")
+        if discovery_packet.mode != 1: return
         
         # assign client ip and send offer packet
         client.ip: ipaddress.IPv4Address = self.get_global_client_ip()
-        offer_packet: pkt.Packet = pkt.Packet(mode=pkt.OFFER_02, src_ip=self.global_ip)
+        offer_packet: pkt.OfferPacket = pkt.OfferPacket(src_ip=self.global_ip, assigned_ip=client.ip)
+        client.send_packet(offer_packet)
         
+        # send ack packet
         
         
         while True:
@@ -364,15 +370,30 @@ class RUSHBSwitch:
     
     
     def greeting_protocol(self, host: device.HostSwitch):
+        """
+        TODO may need to cause running thread to hang indefinitely if the 
+        greeting process fails
+
+        Args:
+            host (device.HostSwitch): _description_
+        """
         # send host dicsovery packet
         # discovery_pkt = pkt.Packet(
         #     mode=pkt.DISCOVERY_01
         #     )
         # discovery_pkt = discovery_pkt.to_bytes()
         discovery_pkt = pkt.DiscoveryPacket()
-        # print(f"discovery pkt mode: {discovery_pkt.mode}")
-        
         host.send_packet(discovery_pkt)
+        
+        # receive offer packet: assign ip to host instance and save ip assigned to you
+        offer_pkt = host.receive_packet()
+        host.host_ip = offer_pkt.src_ip
+        host.assigned_ip = offer_pkt.data
+        self.connected_devices.add_new_connection(host)
+        
+        # create and send request packet
+        request_pkt = pkt.RequestPacket(str(host.host_ip), str(host.assigned_ip))
+        host.send_packet(request_pkt)
         
         time.sleep(10)
         

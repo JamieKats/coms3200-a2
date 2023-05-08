@@ -7,8 +7,8 @@ DISCOVERY_01 = 0x01
 OFFER_02 = 0x02
 REQUEST_03 = 0x03
 ACK_04 = 0x04
-ASK_06 = 0x06
 DATA_05 = 0x05
+ASK_06 = 0x06
 READY_07 = 0x07
 LOCATION_08 = 0x08
 FRAGMENT_0A = 0x0a
@@ -30,7 +30,7 @@ HEADER_SIZE = 12 # bytes
 
 class Packet:
     
-    def __init__(self, mode: bytes, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0", data=None) -> None:
+    def __init__(self, mode: int, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0", data=None) -> None:
         self.src_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(src_ip) # 4 bytes
         self.dest_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(dest_ip) # 4 bytes
         # self.mode: bytes = bytearray(mode) # 1 byte
@@ -41,7 +41,7 @@ class Packet:
         # print(f"mode in packet init: {mode}")
         # print(len(self.mode))
         self.offset: int = offset # 3 bytes
-        self.data = None # any length
+        self.data = data # any length
         
     def to_bytes(self):
         # print(f"mode in to bytes: {self.mode}")
@@ -87,10 +87,14 @@ class Packet:
 class DiscoveryPacket(Packet):
     def __init__(self) -> None:
         # print(f"mode in dis packet init: {DISCOVERY_01}")
+        # print(type(super().__init__))
+        # print(type(ipaddress))
+        # ipaddress.IPv4Network()
+        ip_addr = ipaddress.IPv4Address('0.0.0.0')
         super().__init__(mode=DISCOVERY_01, data=ipaddress.IPv4Address("0.0.0.0"))
         
     def to_bytes(self):
-        self.data = ipaddress.IPv4Address('0.0.0.0')
+        # self.data = ipaddress.IPv4Address('0.0.0.0')
         return super().to_bytes() + struct.pack("!i", int(self.data))
     
     @staticmethod
@@ -99,6 +103,34 @@ class DiscoveryPacket(Packet):
         unpacked_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
         disc_packet.data = ipaddress.IPv4Address(unpacked_data[0])
         return disc_packet
+    
+class OfferPacket(Packet):
+    def __init__(self, src_ip: str, assigned_ip: str) -> None:
+        super().__init__(mode=OFFER_02, src_ip=src_ip, data=ipaddress.IPv4Address(assigned_ip))
+        
+    def to_bytes(self):
+        return super().to_bytes() + struct.pack("!i", int(self.data))
+    
+    @staticmethod
+    def from_bytes(data_bytes) -> Packet:
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        unpacked_offer_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        base_packet.data = ipaddress.IPv4Address(unpacked_offer_data[0])
+        return base_packet
+    
+class RequestPacket(Packet):
+    def __init__(self, dest_ip: str, assigned_ip: str) -> None:
+        super().__init__(mode=REQUEST_03, dest_ip=dest_ip, data=ipaddress.IPv4Address(assigned_ip))
+        
+    def to_bytes(self):
+        return super().to_bytes() + struct.pack("!i", int(self.data))
+    
+    @staticmethod
+    def from_bytes(data_bytes) -> Packet:
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        unpacked_request_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        base_packet.data = ipaddress.IPv4Address(unpacked_request_data[0])
+        return base_packet
         
         
     

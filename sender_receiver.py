@@ -76,8 +76,25 @@ class SenderReceiver:
         
         if packet_header.mode == pkt.DISCOVERY_01:
             packet = pkt.DiscoveryPacket.from_bytes(packet_bytes)
-        else:
-            print(f"recevied mode: {packet_header.mode}")
+        elif packet_header.mode == pkt.OFFER_02:
+            packet = pkt.OfferPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.REQUEST_03:
+            packet = pkt.RequestPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.ACK_04:
+            packet = pkt.AcknowledgePacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.DATA_05:
+            packet = pkt.DataPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.ASK_06:
+            packet = pkt.AskPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.READY_07:
+            packet = pkt.ReadyPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.LOCATION_08:
+            packet = pkt.LocationPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.FRAGMENT_0A:
+            packet = pkt.FragmentPacket.from_bytes(packet_bytes)
+        elif packet_header.mode == pkt.FRAGMENT_END_0B:
+            packet = pkt.FragmentEngPacket.from_bytes(packet_bytes)
 
         return packet
+                
                 
