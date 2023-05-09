@@ -49,7 +49,7 @@ class HostSwitch(Device):
     def __init__(self, conn_socket) -> None:
         super().__init__(conn_socket)
         self.host_ip: ipaddress.IPv4Address = None
-        self.assigned_ip = ipaddress.IPv4Address = None
+        self.assigned_ip: ipaddress.IPv4Address = None
         
     def set_host_ip(self, host_ip):
         self.host_ip = host_ip
