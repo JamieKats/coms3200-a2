@@ -38,8 +38,21 @@ QUESTIONS
     - Chris mentioned in an ed post that "In IP allocation your switch will 
     ignore out of order packets" so therfore, out of order packets in IP 
     allocation breaks IP allocation and that connection will hang indefinitely?
+    - if a host switch receives a distance packet from a client about an updated distance
+    for one of the clients clients (which is already known to the host as a 
+    different ip) how can the host switch "update" the distance to the clients client
+    since the host only knows this switch by another ip????
+    - "If the distance specified in the packet is greater than or equal to the 
+    existing distance record, or if the distance is greater than 1000, the 
+    switch will do nothing." therefore if the original distance is 1500 and the 
+    new distance is 1200, I do nothing since the new distance > 1000?? 
+    - "Whenever a switch receives a Location packet, it will inform all other 
+    neighbouring switches of the Euclidean distance (rounded down) from the 
+    new switch to the respective neighbour." This so me sounds like you are 
+    telling your neighbouring switches the distance to the new switch connected 
+    to you to your neighbours is the stright line?? AKA it skips the middle router??
 """
-import struct
+import math
 import ipaddress
 import socket
 import sys
@@ -55,6 +68,9 @@ HOST_IP = "127.0.0.1"
 MAX_LAT_LONG = 32767
 
 BUFFER_SIZE = 1500
+
+def euclidean_dist(p1, p2):
+    return math.sqrt((p1.latitude - p2.latitude)**2 + (p1.longitude - p2.longitude)**2)
 
 class RUSHBSwitch:
     
@@ -142,16 +158,16 @@ class RUSHBSwitch:
             return False
         
         
-    def valid_cidr(ip: str) -> bool:
-        """
-        Checks if the provided ip is a valid cidr notation
+    # def valid_cidr(ip: str) -> bool:
+    #     """
+    #     Checks if the provided ip is a valid cidr notation
 
-        Args:
-            ip (str): _description_
+    #     Args:
+    #         ip (str): _description_
 
-        Returns:
-            bool: _description_
-        """
+    #     Returns:
+    #         bool: _description_
+    #     """
         
         
     def set_global_ip(self, global_ip_addresses_cidr):
@@ -226,7 +242,7 @@ class RUSHBSwitch:
             
             # create adapterClient instance only if client doesnt already exist
             existing_adapter = self.connected_devices.get_udp_client_with_addr(addr)
-            if existing_adapter is not None:
+            if existing_adapter is not None: # adapter already exists
                 existing_adapter.packet_queue.put(packet)
                 continue
             
@@ -234,9 +250,6 @@ class RUSHBSwitch:
             adapter = device.ClientAdapter(udp_socket=udp_socket, socket_addr=addr)
             self.connected_devices.add_new_connection(adapter)
             
-            # can create queue for the UDP message and sort them by addr then
-            # create thread for the UDP device
-            adapter.packet_queue = queue.Queue()
             adapter.packet_queue.put(packet)
                 
             adapter_client_thread = threading.Thread(
@@ -279,24 +292,26 @@ class RUSHBSwitch:
         if self.greeting_protocol_with_client(client) == False:
             print("client_listen_thread: Greeting proto with client FAILED")
             return
-            
         print("client_listen_thread: Greeting proto with client PASSED")
         
-        while True:
-            try:
-                packet = client.receive_packet()
-            except ConnectionResetError:
-                return
+        # client sends location package
+        
+        self.process_incoming_packets(client)
+        # while True:
+        #     try:
+        #         packet = client.receive_packet()
+        #     except ConnectionResetError:
+        #         return
             
-            # print(f"received packet = {packet}")
-            # add message received to message queue
-            self.incoming_tcp_packet_queue.put(packet)
+        #     # NOTE may need to switch functionality to send packets to an incoming packet queue
+        #     # add message received to message queue
+        #     # self.incoming_tcp_packet_queue.put(packet)
             
     def greeting_protocol_with_client(self, client: device.ClientDevice):
-        print("in greeting proto")
+        # print("in greeting proto")
         # complete greeting protocol then enter while loop
         discovery_packet: pkt.DiscoveryPacket = client.receive_packet()
-        print(f"disc packet {discovery_packet}")
+        # print(f"disc packet {discovery_packet}")
         # print(f"recevied pkt src_ip: {discovery_packet.src_ip}")
         # print(f"recevied pkt dst_ip: {discovery_packet.dest_ip}")
         # print(f"recevied pkt offset: {discovery_packet.offset}")
@@ -326,6 +341,46 @@ class RUSHBSwitch:
         ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=src_ip, dest_ip=client.ip, assigned_ip=client.ip)
         client.send_packet(ack_pkt)
         return True
+
+    # def location_exchange_with_client(self, client: device.ClientDevice):
+    #     """
+    #     Server waits for location message from client and responds to client 
+    #     with one then relays distance to neighbours
+        
+    #     NOTE after greeting protocol the host can just listen for normal packets
+    #     and respond to the location packet like normal and update people with distance packets
+    #     BUT when the client finishes greeting proto it will send the first 
+    #     location pkt as part of the start up process and update all its 
+    #     neighbours of the servers response without responding again to the servers location packet.
+    #     Therefore, responding to location pkts can be apart of processing normal pkts for server
+    #     but for the client this process has to be unique and apart of the start up process 
+
+    #     Args:
+    #         client (device.ClientDevice): _description_
+    #     """
+    #     client_location_pkt: pkt.LocationPacket = client.receive_packet()
+    #     if client_location_pkt.mode != pkt.LOCATION_08: return False
+        
+    #     # get host ip relative to if client is local or global        
+    #     if isinstance(client, device.ClientAdapter):
+    #         src_ip = self.local_ip
+    #     else:
+    #         src_ip = self.global_ip
+        
+    #     # create and send responde location pkt
+    #     location_pkt: pkt.LocationPacket = pkt.LocationPacket(src_ip=src_ip, dest_ip=client.ip, latitude=self.latitude, longitude=self.longitude)
+    #     client.send_packet(location_pkt)
+        
+    #     # update client information with latitude and longitude
+    #     client.latitude = location_pkt.data[0]
+    #     client.longitude = location_pkt.data[1]
+    #     client_dist = math.sqrt((self.latitude - client.latitude)**2 + (self.longitude - client.longitude)**2)
+        
+        
+        
+        
+        
+        
             
     def setup_command_line(self):
         pass
@@ -423,21 +478,69 @@ class RUSHBSwitch:
             return None
         return switch_socket
     
-    def host_connection_thread(self, host):
-        greeting_success = self.greeting_protocol(host)
+    def host_connection_thread(self, host: device.HostSwitch):
+        greeting_success = self.greeting_protocol_with_host(host)
         if greeting_success == False: 
             print("host_connection_thread: Greeting proto with host FAILED")
             return
         print("host_connection_thread: Greeting proto with host PASSED")
         
+        # client switch sends location pkt to host
+        location_pkt: pkt.LOCATION_08 = pkt.LocationPacket(src_ip=host.my_assigned_ip, dest_ip=host.ip, latitude=self.latitude, longitude=self.longitude)
+        host.send_packet(location_pkt)
+        
+        # # recevie location pkt response from host
+        # host_location_pkt: pkt.LocationPacket = host.receive_packet()
+        # if host_location_pkt.mode != pkt.LOCATION_08:
+        #     print("Host did not send a location pkt back")
+        #     return
+        
+        # host.latitude = host_location_pkt.data[0]
+        # host.longitude = host_location_pkt.data[1]
+        # host_dist = euclidean_dist(host, self)
+        # self.connected_devices.update_distance_to_device(host_dist, host.ip)
+        
         # greeting protocol with host was success, therefore can add host to 
         # list of hosts we can communicate with
-        self.connected_devices.add_new_connection(host)
+        # self.connected_devices.add_new_connection(host)
+        self.process_incoming_packets(host)
+        
+                
+    def process_incoming_packets(self, device: device.Device):
+        while True:
+            try:
+                packet = device.receive_packet()
+            except ConnectionResetError:
+                return
+            
+            if packet.data == pkt.DATA_05:
+                self.handle_data_packet()
+            elif packet.data == pkt.READY_07:
+                self.handle_ready_packet()
+            elif packet.data == pkt.LOCATION_08:
+                self.handle_location_packet()
+            elif packet.data == pkt.DISTANCE_09:
+                self.handle_distance_packet()
+            elif packet.data == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
+                self.handle_fragments()
         
         
+    def handle_location_packet(self, device: device.Device, packet: pkt.LocationPacket):
+        device.latitude = packet.data[0]
+        device.longitude = packet.data[1]
+        device_dist = euclidean_dist(device, self)
+        self.connected_devices.update_distance_to_device(device_dist, device.ip)
+        
+        # respond to device if they are a client
+        if isinstance(device, device.ClientDevice) == True:
+            location_pkt: pkt.LocationPacket = pkt.LocationPacket(src_ip=self.global_ip, dest_ip=device.ip, latitude=self.latitude, longitude=self.longitude)
+            device.send_packet(location_pkt)
+    
+        # send distance packets to other neighbours
+        print("SENDING DISTANCE PACKET TO NEIGHBOURS...")
     
     
-    def greeting_protocol(self, host: device.HostSwitch) -> bool:
+    def greeting_protocol_with_host(self, host: device.HostSwitch) -> bool:
         """
         TODO 
         - may need to cause running thread to hang indefinitely if the 

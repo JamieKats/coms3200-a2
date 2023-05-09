@@ -17,6 +17,7 @@ class Device:
         self.ip: ipaddress.IPv4Address = None
         self.latitude: int = None
         self.longitude: int = None
+        self.euclidian_dist = None
         
     # def set_ip(self, ip: ipaddress.IPv4Address):
     #     self.ip = ip

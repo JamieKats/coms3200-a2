@@ -11,8 +11,15 @@ class ConnectedDevices:
     def __init__(self) -> None:
         self.hosts = []
         self.clients = []
+        self.distance_to_devices = {}
     
     def add_new_connection(self, new_device: device.Device):
+        """
+        NOTE At time this method is called the new_device may not have had an ip assigned yet
+
+        Args:
+            new_device (device.Device): _description_
+        """
         if isinstance(new_device, device.ClientDevice):
             self.clients.append(new_device)
         if isinstance(new_device, device.HostSwitch):
@@ -23,3 +30,14 @@ class ConnectedDevices:
             if isinstance(client, device.ClientAdapter) and client.socket_addr == addr:
                 return client
         return None
+    
+    def update_distance_to_device(self, new_dist, device_ip, via_device=None):
+        if device_ip not in self.distance_to_devices.keys():
+            self.distance_to_devices[device_ip] = (via_device, new_dist)
+            return
+        
+        # check if device current distance is < currently saved
+        current_dist = self.distance_to_devices[device_ip]
+        
+        if new_dist < current_dist and new_dist <= 1000:
+            self.distance_to_devices[device_ip] = (via_device, new_dist)

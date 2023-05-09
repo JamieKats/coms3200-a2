@@ -11,6 +11,7 @@ DATA_05 = 0x05
 ASK_06 = 0x06
 READY_07 = 0x07
 LOCATION_08 = 0x08
+DISTANCE_09 = 0x09
 FRAGMENT_0A = 0x0a
 FRAGMENT_END_0B = 0x0b
 
@@ -151,6 +152,21 @@ class AcknowledgePacket(Packet):
         base_packet.data = ipaddress.IPv4Address(unpacked_ack_data[0])
         return base_packet
         
+        
+class LocationPacket(Packet):
+    def __init__(self, src_ip: str, dest_ip: str, latitude: int, longitude: int) -> None:
+        super().__init__(mode=LOCATION_08, src_ip=src_ip, dest_ip=dest_ip, data=(latitude, longitude))
+        
+    def to_bytes(self):
+        return super().to_bytes() + self.data[0].to_bytes(2, 'big') + self.data[1].to_bytes(2, 'big')
+    
+    @staticmethod
+    def from_bytes(data_bytes):
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        latitude = int.from_bytes(data_bytes[HEADER_SIZE:HEADER_SIZE+2], 'big')
+        longitude = int.from_bytes(data_bytes[HEADER_SIZE+2:], 'big')
+        base_packet.data = (latitude, longitude)
+        return base_packet
         
     
 # def ip2long(ip):
