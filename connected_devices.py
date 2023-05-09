@@ -17,3 +17,9 @@ class ConnectedDevices:
             self.clients.append(new_device)
         if isinstance(new_device, device.HostSwitch):
             self.hosts.append(new_device)
+
+    def get_udp_client_with_addr(self, addr):
+        for client in self.clients:
+            if isinstance(client, device.ClientAdapter) and client.socket_addr == addr:
+                return client
+        return None

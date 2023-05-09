@@ -14,7 +14,7 @@ import queue
 class Device:
     def __init__(self, conn_socket) -> None:
         self.conn_socket: socket.socket = conn_socket
-        # self.ip: ipaddress.IPv4Address = None
+        self.ip: ipaddress.IPv4Address = None
         self.latitude: int = None
         self.longitude: int = None
         
@@ -36,7 +36,7 @@ class Device:
 class ClientDevice(Device):
     def __init__(self, conn_socket) -> None:
         super().__init__(conn_socket)
-        self.client_ip: ipaddress.IPv4Address = None
+        # self.client_ip: ipaddress.IPv4Address = None
     
 class ClientSwitch(ClientDevice):
     def __init__(self, conn_socket) -> None:
@@ -52,21 +52,21 @@ class ClientAdapter(ClientDevice):
         return SenderReceiver.receive_packet_udp(self.packet_queue)
     
     def send_packet(self, packet: pkt.Packet):
-        SenderReceiver.send_packet_udp(packet=packet, udp_socket=socket, client_addr=self.socket_addr)
+        SenderReceiver.send_packet_udp(packet=packet, udp_socket=self.conn_socket, client_addr=self.socket_addr)
         
         
         
 class HostSwitch(Device):
     def __init__(self, conn_socket) -> None:
         super().__init__(conn_socket)
-        self.host_ip: ipaddress.IPv4Address = None
-        self.assigned_ip: ipaddress.IPv4Address = None
+        # self.host_ip: ipaddress.IPv4Address = None
+        self.my_assigned_ip: ipaddress.IPv4Address = None
         
-    def set_host_ip(self, host_ip):
-        self.host_ip = host_ip
+    # def set_host_ip(self, host_ip):
+    #     self.host_ip = host_ip
         
     def set_assigned_ip(self, assigned_ip):
-        self.assigned_ip = assigned_ip
+        self.my_assigned_ip = assigned_ip
         
 # class Switch(Device):
 #     def __init__(self, conn_socket) -> None:

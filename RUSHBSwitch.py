@@ -217,31 +217,35 @@ class RUSHBSwitch:
         """
         while True:
             packet_information = udp_socket.recvfrom(BUFFER_SIZE)
-            message = packet_information[0]
+            packet = packet_information[0]
             addr = packet_information[1]
             
-            print(f"UDP message: {message}")
+            print(f"UDP message: {packet}")
             print(f"UDP addr: {addr}")
             
             
             # create adapterClient instance only if client doesnt already exist
+            existing_adapter = self.connected_devices.get_udp_client_with_addr(addr)
+            if existing_adapter is not None:
+                existing_adapter.packet_queue.put(packet)
+                continue
+            
+            # create client and thread if they dont exist
             adapter = device.ClientAdapter(udp_socket=udp_socket, socket_addr=addr)
+            self.connected_devices.add_new_connection(adapter)
             
             # can create queue for the UDP message and sort them by addr then
             # create thread for the UDP device
-            if addr[1] not in self.adapter_message_queues.keys():
-                adapter_msg_queue = queue.Queue()
-                self.adapter_message_queues[addr[1]] = adapter_msg_queue
+            adapter.packet_queue = queue.Queue()
+            adapter.packet_queue.put(packet)
                 
             adapter_client_thread = threading.Thread(
-                target=self.,
-                args=(,),
+                target=self.client_listen_thread,
+                args=(adapter,),
                 daemon=True
             )
-            
-            # process udp packet here, might need to move udp packet processing out
-            # via an outgoing udp packet queue
-
+            adapter_client_thread.start()
+            print("end of listen udp socket")
             
         
     def listen_tcp_socket_thread(self, tcp_socket):
@@ -264,14 +268,14 @@ class RUSHBSwitch:
             
             # create thread to handle client incoming messages
             client_listener_thread = threading.Thread(
-                target=self.client_switch_listen_thread,
+                target=self.client_listen_thread,
                 args=(client, ),
                 daemon=True)
             
             client_listener_thread.start()
             
             
-    def client_switch_listen_thread(self, client: device.Device):
+    def client_listen_thread(self, client: device.Device):
         if self.greeting_protocol_with_client(client) == False:
             print("client_listen_thread: Greeting proto with client FAILED")
             return
@@ -289,8 +293,10 @@ class RUSHBSwitch:
             self.incoming_tcp_packet_queue.put(packet)
             
     def greeting_protocol_with_client(self, client: device.ClientDevice):
+        print("in greeting proto")
         # complete greeting protocol then enter while loop
         discovery_packet: pkt.DiscoveryPacket = client.receive_packet()
+        print(f"disc packet {discovery_packet}")
         # print(f"recevied pkt src_ip: {discovery_packet.src_ip}")
         # print(f"recevied pkt dst_ip: {discovery_packet.dest_ip}")
         # print(f"recevied pkt offset: {discovery_packet.offset}")
@@ -298,9 +304,17 @@ class RUSHBSwitch:
         # print(f"recevied pkt data: {discovery_packet.data}")
         if discovery_packet.mode != pkt.DISCOVERY_01: return False
         
+        
         # assign client ip and send offer packet
-        client.ip: ipaddress.IPv4Address = self.get_global_client_ip()
-        offer_packet: pkt.OfferPacket = pkt.OfferPacket(src_ip=self.global_ip, assigned_ip=client.ip)
+        # if client is adapter give next availble local ip otherwise give global ip
+        if isinstance(client, device.ClientAdapter):
+            client.ip: ipaddress.IPv4Address = self.get_local_client_ip()
+            src_ip = self.local_ip
+        else:
+            client.ip: ipaddress.IPv4Address = self.get_global_client_ip()
+            src_ip = self.global_ip
+    
+        offer_packet: pkt.OfferPacket = pkt.OfferPacket(src_ip=src_ip, assigned_ip=client.ip)
         client.send_packet(offer_packet)
         # print("in client listen greeting after offer packet")
         
@@ -309,7 +323,7 @@ class RUSHBSwitch:
         if request_pkt.mode != pkt.REQUEST_03: return False
         
         # create and send acknowledgement packet
-        ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=self.global_ip, dest_ip=client.ip, assigned_ip=client.ip)
+        ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=src_ip, dest_ip=client.ip, assigned_ip=client.ip)
         client.send_packet(ack_pkt)
         return True
             
@@ -445,11 +459,11 @@ class RUSHBSwitch:
         offer_pkt = host.receive_packet()
         if offer_pkt.mode != pkt.OFFER_02: return False
         host.host_ip = offer_pkt.src_ip
-        host.assigned_ip = offer_pkt.data
+        host.my_assigned_ip = offer_pkt.data
         self.connected_devices.add_new_connection(host)
         
         # create and send request packet
-        request_pkt = pkt.RequestPacket(str(host.host_ip), str(host.assigned_ip))
+        request_pkt = pkt.RequestPacket(str(host.host_ip), str(host.my_assigned_ip))
         host.send_packet(request_pkt)
         
         # receive ack packet

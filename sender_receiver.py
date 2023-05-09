@@ -85,10 +85,9 @@ class SenderReceiver:
     @staticmethod
     def receive_packet_udp(packet_queue: queue.Queue):
         packet_bytes = packet_queue.get()
-        
+        print(f"udp packet receved from queue: {packet_bytes}")
         return _decode_packet(packet_bytes)
-            
-                
+        
     
 def _decode_packet(packet_bytes: bytes):
     packet_header: pkt.Packet = pkt.Packet.from_bytes(packet_bytes)
