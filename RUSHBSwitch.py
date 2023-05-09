@@ -252,16 +252,21 @@ class RUSHBSwitch:
         # print(f"recevied pkt offset: {discovery_packet.offset}")
         # print(f"recevied pkt mode: {discovery_packet.mode}")
         # print(f"recevied pkt data: {discovery_packet.data}")
-        if discovery_packet.mode != 1: return
+        if discovery_packet.mode != pkt.DISCOVERY_01: return
         
         # assign client ip and send offer packet
         client.ip: ipaddress.IPv4Address = self.get_global_client_ip()
         offer_packet: pkt.OfferPacket = pkt.OfferPacket(src_ip=self.global_ip, assigned_ip=client.ip)
         client.send_packet(offer_packet)
-        print("in client listen greeting after offer packet")
+        # print("in client listen greeting after offer packet")
         
-        # send ack packet
+        # receive request packet
+        request_pkt: pkt.RequestPacket = client.receive_packet()
+        if request_pkt.mode != pkt.REQUEST_03: return
         
+        # create and send acknowledgement packet
+        ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=self.global_ip, dest_ip=client.ip, assigned_ip=client.ip)
+        client.send_packet(ack_pkt)
         
         while True:
             try:
@@ -370,10 +375,12 @@ class RUSHBSwitch:
         return switch_socket
     
     
-    def greeting_protocol(self, host: device.HostSwitch):
+    def greeting_protocol(self, host: device.HostSwitch) -> bool:
         """
-        TODO may need to cause running thread to hang indefinitely if the 
+        TODO 
+        - may need to cause running thread to hang indefinitely if the 
         greeting process fails
+        - will need to implement checks to make sure the received packets have all the correct information
 
         Args:
             host (device.HostSwitch): _description_
@@ -388,6 +395,7 @@ class RUSHBSwitch:
         
         # receive offer packet: assign ip to host instance and save ip assigned to you
         offer_pkt = host.receive_packet()
+        if offer_pkt.mode != pkt.OFFER_02: return False
         host.host_ip = offer_pkt.src_ip
         host.assigned_ip = offer_pkt.data
         self.connected_devices.add_new_connection(host)
@@ -396,7 +404,11 @@ class RUSHBSwitch:
         request_pkt = pkt.RequestPacket(str(host.host_ip), str(host.assigned_ip))
         host.send_packet(request_pkt)
         
-        time.sleep(10)
+        # receive ack packet
+        ack_pkt = host.receive_packet()
+        if ack_pkt.mode != pkt.ACK_04: return False
+        
+        return True
         
         
         

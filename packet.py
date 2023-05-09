@@ -136,6 +136,20 @@ class RequestPacket(Packet):
         unpacked_request_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
         base_packet.data = ipaddress.IPv4Address(unpacked_request_data[0])
         return base_packet
+    
+class AcknowledgePacket(Packet):
+    def __init__(self, src_ip: str, dest_ip: str, assigned_ip: str) -> None:
+        super().__init__(mode=ACK_04, src_ip=src_ip, dest_ip=dest_ip, data=ipaddress.IPv4Address(assigned_ip))
+        
+    def to_bytes(self):
+        return super().to_bytes() + struct.pack("!I", int(self.data))
+    
+    @staticmethod
+    def from_bytes(data_bytes):
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        unpacked_ack_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
+        base_packet.data = ipaddress.IPv4Address(unpacked_ack_data[0])
+        return base_packet
         
         
     
