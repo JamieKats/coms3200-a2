@@ -13,6 +13,7 @@ TODO remove all instances of todo print statements in all files
 import json
 import socket
 import packet as pkt
+import queue
 
 MAX_BUFFER_SIZE = 1500
 
@@ -20,7 +21,7 @@ MAX_BUFFER_SIZE = 1500
 class SenderReceiver:
     
     @staticmethod
-    def send_packet(packet: pkt.Packet, conn_socket: socket) -> bool:
+    def send_packet_tcp(packet: pkt.Packet, conn_socket: socket) -> bool:
         """
         Sends the given message to the given TCP socket.
         
@@ -45,10 +46,18 @@ class SenderReceiver:
             return False
         
         return True
+    
+    @staticmethod
+    def send_packet_udp(packet: pkt.Packet, udp_socket: socket, client_addr) -> bool:
+        packet_bytes = packet.to_bytes()
+        
+        udp_socket.sendto(packet_bytes, client_addr)
+        
+        return True
         
         
     @staticmethod
-    def receive_packet(conn_socket: socket) -> pkt.Packet:
+    def receive_packet_tcp(conn_socket: socket) -> pkt.Packet:
         """
         Receive message over TCP.
         
@@ -70,31 +79,39 @@ class SenderReceiver:
             packet_bytes = conn_socket.recv(MAX_BUFFER_SIZE)
         except OSError:
             return None
-        # print(f"received pkt: {packet_bytes}")
-        # convert packet into header to check mode
-        packet_header: pkt.Packet = pkt.Packet.from_bytes(packet_bytes)
-        
-        if packet_header.mode == pkt.DISCOVERY_01:
-            packet = pkt.DiscoveryPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.OFFER_02:
-            packet = pkt.OfferPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.REQUEST_03:
-            packet = pkt.RequestPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.ACK_04:
-            packet = pkt.AcknowledgePacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.DATA_05:
-            packet = pkt.DataPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.ASK_06:
-            packet = pkt.AskPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.READY_07:
-            packet = pkt.ReadyPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.LOCATION_08:
-            packet = pkt.LocationPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.FRAGMENT_0A:
-            packet = pkt.FragmentPacket.from_bytes(packet_bytes)
-        elif packet_header.mode == pkt.FRAGMENT_END_0B:
-            packet = pkt.FragmentEngPacket.from_bytes(packet_bytes)
 
-        return packet
+        return _decode_packet(packet_bytes)
+    
+    @staticmethod
+    def receive_packet_udp(packet_queue: queue.Queue):
+        packet_bytes = packet_queue.get()
+        
+        return _decode_packet(packet_bytes)
+            
                 
-                
+    
+def _decode_packet(packet_bytes: bytes):
+    packet_header: pkt.Packet = pkt.Packet.from_bytes(packet_bytes)
+    
+    if packet_header.mode == pkt.DISCOVERY_01:
+        packet = pkt.DiscoveryPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.OFFER_02:
+        packet = pkt.OfferPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.REQUEST_03:
+        packet = pkt.RequestPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.ACK_04:
+        packet = pkt.AcknowledgePacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.DATA_05:
+        packet = pkt.DataPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.ASK_06:
+        packet = pkt.AskPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.READY_07:
+        packet = pkt.ReadyPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.LOCATION_08:
+        packet = pkt.LocationPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.FRAGMENT_0A:
+        packet = pkt.FragmentPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.FRAGMENT_END_0B:
+        packet = pkt.FragmentEngPacket.from_bytes(packet_bytes)
+        
+    return packet

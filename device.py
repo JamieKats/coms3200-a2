@@ -9,6 +9,7 @@ import socket
 import ipaddress
 from sender_receiver import SenderReceiver
 import packet as pkt
+import queue
 
 class Device:
     def __init__(self, conn_socket) -> None:
@@ -27,10 +28,10 @@ class Device:
         self.longitude = longitude  
         
     def receive_packet(self) -> pkt.Packet:
-        return SenderReceiver.receive_packet(conn_socket=self.conn_socket)
+        return SenderReceiver.receive_packet_tcp(conn_socket=self.conn_socket)
         
     def send_packet(self, packet: pkt.Packet):
-        SenderReceiver.send_packet(packet=packet, conn_socket=self.conn_socket)
+        SenderReceiver.send_packet_tcp(packet=packet, conn_socket=self.conn_socket)
         
 class ClientDevice(Device):
     def __init__(self, conn_socket) -> None:
@@ -42,8 +43,18 @@ class ClientSwitch(ClientDevice):
         super().__init__(conn_socket)
 
 class ClientAdapter(ClientDevice):
-    def __init__(self, conn_socket) -> None:
-        super().__init__(conn_socket)
+    def __init__(self, udp_socket, socket_addr) -> None:
+        super().__init__(conn_socket=udp_socket)
+        self.socket_addr = socket_addr
+        self.packet_queue = queue.Queue()
+        
+    def receive_packet(self) -> pkt.Packet:
+        return SenderReceiver.receive_packet_udp(self.packet_queue)
+    
+    def send_packet(self, packet: pkt.Packet):
+        SenderReceiver.send_packet_udp(packet=packet, udp_socket=socket, client_addr=self.socket_addr)
+        
+        
         
 class HostSwitch(Device):
     def __init__(self, conn_socket) -> None:

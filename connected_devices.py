@@ -9,11 +9,11 @@ import device
 
 class ConnectedDevices:
     def __init__(self) -> None:
-        self.hosts = {}
-        self.clients = {}
+        self.hosts = []
+        self.clients = []
     
     def add_new_connection(self, new_device: device.Device):
         if isinstance(new_device, device.ClientDevice):
-            self.clients[new_device.client_ip] = new_device
+            self.clients.append(new_device)
         if isinstance(new_device, device.HostSwitch):
-            self.hosts[new_device.host_ip] = new_device
+            self.hosts.append(new_device)
