@@ -350,12 +350,12 @@ class RUSHBSwitch:
             # greeting protocol needs to complete before client (self) can 
             # receive any message from host
             # greeting protocol needs to begin in its own thread, greeting protocol can hang indefinitely
-            greeting_thread = threading.Thread(
-                target=self.greeting_protocol,
+            host_conn_thread = threading.Thread(
+                target=self.host_connection_thread,
                 args=(host, ),
                 daemon=True
             )
-            greeting_thread.start()
+            host_conn_thread.start()
             
             # complete greeting protocol
             
@@ -373,6 +373,19 @@ class RUSHBSwitch:
         except ConnectionRefusedError:
             return None
         return switch_socket
+    
+    def host_connection_thread(self, host):
+        greeting_success = self.greeting_protocol(host)
+        if greeting_success == False: 
+            print("host_connection_thread: Greeting proto with host FAILED")
+            return
+        print("host_connection_thread: Greeting proto with host PASSED")
+        
+        # greeting protocol with host was success, therefore can add host to 
+        # list of hosts we can communicate with
+        self.connected_devices.add_new_connection(host)
+        
+        
     
     
     def greeting_protocol(self, host: device.HostSwitch) -> bool:
