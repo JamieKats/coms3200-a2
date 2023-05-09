@@ -258,6 +258,7 @@ class RUSHBSwitch:
         client.ip: ipaddress.IPv4Address = self.get_global_client_ip()
         offer_packet: pkt.OfferPacket = pkt.OfferPacket(src_ip=self.global_ip, assigned_ip=client.ip)
         client.send_packet(offer_packet)
+        print("in client listen greeting after offer packet")
         
         # send ack packet
         

@@ -44,25 +44,30 @@ class Packet:
         self.data = data # any length
         
     def to_bytes(self):
+        """
+        Might need to change struct pack to this
+        https://stackoverflow.com/questions/41664084/python-pack-ip-string-to-bytes
+
+        Returns:
+            _type_: _description_
+        """
         # print(f"mode in to bytes: {self.mode}")
         # print(len(self.mode))
         offset_bytes = self.offset.to_bytes(3, 'big')
         mode_bytes = self.mode.to_bytes(1, 'big')
         offset_mode_as_int = int.from_bytes(offset_bytes + mode_bytes, "big")
+        # print("IN PACKET TO BYTES")
+        # print(f"offset bytes: {offset_bytes}")
+        # print(f"mode_bytes: {mode_bytes}")
         # print(f"offset mode as int: {offset_mode_as_int}")
-        # # print(f"offset mode bytes: {offset_mode_bytes}")
-        # # print(self.offset)
-        # # print(len(bytes(self.offset)))
-        # # print(len(self.mode))
-        # # print(f"offset mode as int: {int(offset_mode_bytes)}")
-        # print(f"struct packed: {struct.pack('!i i i', int(self.src_ip), int(self.dest_ip), offset_mode_as_int)}")
-        # print(f"struct len: {len(struct.pack('!i i i', int(self.src_ip), int(self.dest_ip), offset_mode_as_int))}")
-        return struct.pack("!i i i", int(self.src_ip), int(self.dest_ip), offset_mode_as_int)
+        # print(f"src ip: {self.src_ip} = {int(self.src_ip)}")
+        # print(f"dest_ip: {self.dest_ip} = {int(self.dest_ip)}")
+        return struct.pack("!I I I", int(self.src_ip), int(self.dest_ip), offset_mode_as_int)
         # return struct.pack("!i i i L", int(self.src_ip), int(self.dest_ip), self.offset, self.mode)
     
     @staticmethod
     def from_bytes(data_bytes):
-        unpacked_data = struct.unpack("!i i i", data_bytes[:HEADER_SIZE])
+        unpacked_data = struct.unpack("!I I I", data_bytes[:HEADER_SIZE])
         src_ip = str(ipaddress.IPv4Address(unpacked_data[0]))
         dest_ip = str(ipaddress.IPv4Address(unpacked_data[1]))
         # offset = int.to_bytes(data_bytes[2][8:11], 4)
@@ -95,12 +100,12 @@ class DiscoveryPacket(Packet):
         
     def to_bytes(self):
         # self.data = ipaddress.IPv4Address('0.0.0.0')
-        return super().to_bytes() + struct.pack("!i", int(self.data))
+        return super().to_bytes() + struct.pack("!I", int(self.data))
     
     @staticmethod
     def from_bytes(data_bytes) -> Packet:
         disc_packet: Packet = Packet.from_bytes(data_bytes)
-        unpacked_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        unpacked_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
         disc_packet.data = ipaddress.IPv4Address(unpacked_data[0])
         return disc_packet
     
@@ -109,12 +114,12 @@ class OfferPacket(Packet):
         super().__init__(mode=OFFER_02, src_ip=src_ip, data=ipaddress.IPv4Address(assigned_ip))
         
     def to_bytes(self):
-        return super().to_bytes() + struct.pack("!i", int(self.data))
+        return super().to_bytes() + struct.pack("!I", int(self.data))
     
     @staticmethod
     def from_bytes(data_bytes) -> Packet:
         base_packet: Packet = Packet.from_bytes(data_bytes)
-        unpacked_offer_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        unpacked_offer_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
         base_packet.data = ipaddress.IPv4Address(unpacked_offer_data[0])
         return base_packet
     
@@ -123,12 +128,12 @@ class RequestPacket(Packet):
         super().__init__(mode=REQUEST_03, dest_ip=dest_ip, data=ipaddress.IPv4Address(assigned_ip))
         
     def to_bytes(self):
-        return super().to_bytes() + struct.pack("!i", int(self.data))
+        return super().to_bytes() + struct.pack("!I", int(self.data))
     
     @staticmethod
     def from_bytes(data_bytes) -> Packet:
         base_packet: Packet = Packet.from_bytes(data_bytes)
-        unpacked_request_data = struct.unpack("!i", data_bytes[HEADER_SIZE:])
+        unpacked_request_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
         base_packet.data = ipaddress.IPv4Address(unpacked_request_data[0])
         return base_packet
         
