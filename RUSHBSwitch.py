@@ -13,10 +13,13 @@ mixed switches ignore all stdin
     
 TEST STRINGS
 # local switch
-python3 RUSHBSwitch.py local 1.2.3.4/24 10 20
+python3 RUSHBSwitch.py local 192.168.0.1/24 50 20
 
 # mixed switch
-python3 RUSHBSwitch.py local 2.3.4.5/24 12.12.12.12/24 49 50
+python3 RUSHBSwitch.py local 192.168.0.1/24 130.102.72.10/24 50 20
+
+# global switch
+python3 RUSHBSwitch.py global 130.102.72.10/24 50 20
 
 QUESTIONS
     - How do you know what size data in the data pkt you receive? if mulitple 
@@ -39,7 +42,7 @@ QUESTIONS
     protocol can that ip be used for another client? ASK ON ED ............INCREMENT THE IP ONCE THE OFFER PACKET IS SENT
     - Chris mentioned in an ed post that "In IP allocation your switch will 
     ignore out of order packets" so therfore, out of order packets in IP 
-    allocation breaks IP allocation and that connection will hang indefinitely? ASK ON ED
+    allocation breaks IP allocation and that connection will hang indefinitely? ASK ON ED. none of the tests check any error cases
     - if a host switch receives a distance packet from a client about an updated distance
     for one of the clients clients (which is already known to the host as a 
     different ip) how can the host switch "update" the distance to the clients client
@@ -59,7 +62,9 @@ QUESTIONS
     - Since for now we can assume the adapter will send the packets slow enough 
     that the receiving switch will block before a new piece of data is received.
     A similar issue occurs for switch to switch packet sending. Suggestion from chris
-    is to pattern match the structure of the header to split up packets
+    is to pattern match the structure of the header to split up packets. Suggestion
+    from arthur is this shouldnt be an issue or you can put sleeps in between 
+    sending the packets so you dont get multiple packets in the buffer
 """
 import math
 import ipaddress
@@ -79,7 +84,7 @@ MAX_LAT_LONG = 32767
 BUFFER_SIZE = 1500
 
 def euclidean_dist(p1, p2):
-    return math.sqrt((p1.latitude - p2.latitude)**2 + (p1.longitude - p2.longitude)**2)
+    return math.sqrt((int(p1.latitude) - int(p2.latitude))**2 + (int(p1.longitude) - int(p2.longitude))**2)
 
 class RUSHBSwitch:
     
@@ -456,6 +461,9 @@ class RUSHBSwitch:
                 return
             
             switch_socket = self.connect_to_switch(port)
+            if switch_socket == None:
+                print("Connection failed...") # TODO
+                continue
             
             # create client switch object
             host = device.HostSwitch(conn_socket=switch_socket)
@@ -495,8 +503,15 @@ class RUSHBSwitch:
         print("host_connection_thread: Greeting proto with host PASSED")
         
         # client switch sends location pkt to host
+        print("Creating location pkt to send to host")
+        print(f"my ip: {host.my_assigned_ip}")
+        print(f"host ip: {host.ip}")
+        print(f"my lat: {self.latitude}")
+        print(f"my long: {self.longitude}")
         location_pkt: pkt.LOCATION_08 = pkt.LocationPacket(src_ip=host.my_assigned_ip, dest_ip=host.ip, latitude=self.latitude, longitude=self.longitude)
         host.send_packet(location_pkt)
+        print("Sent location pkt to host")
+        
         
         # # recevie location pkt response from host
         # host_location_pkt: pkt.LocationPacket = host.receive_packet()
@@ -522,28 +537,30 @@ class RUSHBSwitch:
             except ConnectionResetError:
                 return
             
-            if packet.data == pkt.DATA_05:
-                self.handle_data_packet()
-            elif packet.data == pkt.READY_07:
-                self.handle_ready_packet()
-            elif packet.data == pkt.LOCATION_08:
-                self.handle_location_packet()
-            elif packet.data == pkt.DISTANCE_09:
-                self.handle_distance_packet()
-            elif packet.data == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
-                self.handle_fragments()
+            if packet.mode == pkt.DATA_05:
+                self.handle_data_packet(packet)
+            elif packet.mode == pkt.READY_07:
+                self.handle_ready_packet(packet)
+            elif packet.mode == pkt.LOCATION_08:
+                self.handle_location_packet(conn_device=device, packet=packet)
+            elif packet.mode == pkt.DISTANCE_09:
+                self.handle_distance_packet(packet)
+            elif packet.mode == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
+                self.handle_fragments(packet)
         
         
-    def handle_location_packet(self, device: device.Device, packet: pkt.LocationPacket):
-        device.latitude = packet.data[0]
-        device.longitude = packet.data[1]
-        device_dist = euclidean_dist(device, self)
-        self.connected_devices.update_distance_to_device(device_dist, device.ip)
+    def handle_location_packet(self, conn_device: device.Device, packet: pkt.LocationPacket):
+        print("in handle_location_packet")
+        conn_device.latitude = packet.data[0]
+        conn_device.longitude = packet.data[1]
+        device_dist = euclidean_dist(conn_device, self)
+        self.connected_devices.update_distance_to_device(device_dist, conn_device.ip)
         
         # respond to device if they are a client
-        if isinstance(device, device.ClientDevice) == True:
-            location_pkt: pkt.LocationPacket = pkt.LocationPacket(src_ip=self.global_ip, dest_ip=device.ip, latitude=self.latitude, longitude=self.longitude)
-            device.send_packet(location_pkt)
+        if isinstance(conn_device, device.ClientDevice) == True:
+            # print(True)
+            location_pkt: pkt.LocationPacket = pkt.LocationPacket(src_ip=self.global_ip, dest_ip=conn_device.ip, latitude=self.latitude, longitude=self.longitude)
+            conn_device.send_packet(location_pkt)
     
         # send distance packets to other neighbours
         print("SENDING DISTANCE PACKET TO NEIGHBOURS...")
@@ -570,12 +587,12 @@ class RUSHBSwitch:
         # receive offer packet: assign ip to host instance and save ip assigned to you
         offer_pkt = host.receive_packet()
         if offer_pkt.mode != pkt.OFFER_02: return False
-        host.host_ip = offer_pkt.src_ip
+        host.ip = offer_pkt.src_ip
         host.my_assigned_ip = offer_pkt.data
         self.connected_devices.add_new_connection(host)
         
         # create and send request packet
-        request_pkt = pkt.RequestPacket(str(host.host_ip), str(host.my_assigned_ip))
+        request_pkt = pkt.RequestPacket(str(host.ip), str(host.my_assigned_ip))
         host.send_packet(request_pkt)
         
         # receive ack packet

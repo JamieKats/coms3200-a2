@@ -158,7 +158,9 @@ class LocationPacket(Packet):
         super().__init__(mode=LOCATION_08, src_ip=src_ip, dest_ip=dest_ip, data=(latitude, longitude))
         
     def to_bytes(self):
-        return super().to_bytes() + self.data[0].to_bytes(2, 'big') + self.data[1].to_bytes(2, 'big')
+        # print(self.data[0])
+        # print(self.data[1])
+        return super().to_bytes() + int(self.data[0]).to_bytes(2, 'big') + int(self.data[1]).to_bytes(2, 'big')
     
     @staticmethod
     def from_bytes(data_bytes):
