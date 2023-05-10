@@ -22,35 +22,44 @@ QUESTIONS
     - How do you know what size data in the data pkt you receive? if mulitple 
     msgs in buffer then need to know how big data packet is so you dont read into the next packet in the buffer
     NOTE: adding a seperater to p[ackets ownt help since the adapter is not aware. I believe there needs to be some sort of data length field
+    A: can assume for now adapter will send large packets slow enough that the receiver side will block before the adapter sends another
     - can CIDR ip addresses given to us have the host bits set? e.g. in mixed switch example
     130.102.72.10/24 is given as the global_ip_address which has the host bit set at x.x.x.10
     therefore should that network start at 130.102.72.10 (host) then have 2 ^ (32-24) possible clients?
     The "IP Address Allocation" bit gives examples where the host ip starts at x.x.x.1, can we always 
     expect that or can the host bit start at any number like the mixed global switch example of 
     x.x.x.10
+    A: host is given ip sttarting at .10 and first client starts at .1
     - linking with qn above, in example where 130.102.72.10/24 is given as the global ip
     what would be the two ips you dont count in the 256 total ips in a /24 network??
     - is there any need for the client to save the IP address
     - is the ip assigned to a client only removed from the list of remaining 
     client ips when the greeting protocol finishes or when the offer packet is sent??
     i.e. if commuinication fails between the offfer pkt and the end of greeting 
-    protocol can that ip be used for another client?
+    protocol can that ip be used for another client? ASK ON ED
     - Chris mentioned in an ed post that "In IP allocation your switch will 
     ignore out of order packets" so therfore, out of order packets in IP 
-    allocation breaks IP allocation and that connection will hang indefinitely?
+    allocation breaks IP allocation and that connection will hang indefinitely? ASK ON ED
     - if a host switch receives a distance packet from a client about an updated distance
     for one of the clients clients (which is already known to the host as a 
     different ip) how can the host switch "update" the distance to the clients client
     since the host only knows this switch by another ip????
+    A: ignore case where theres multiple names for the same client
     - "If the distance specified in the packet is greater than or equal to the 
     existing distance record, or if the distance is greater than 1000, the 
     switch will do nothing." therefore if the original distance is 1500 and the 
-    new distance is 1200, I do nothing since the new distance > 1000?? 
+    new distance is 1200, I do nothing since the new distance > 1000?? A: YES
     - "Whenever a switch receives a Location packet, it will inform all other 
     neighbouring switches of the Euclidean distance (rounded down) from the 
     new switch to the respective neighbour." This so me sounds like you are 
     telling your neighbouring switches the distance to the new switch connected 
     to you to your neighbours is the stright line?? AKA it skips the middle router??
+    A: not in straight line, it is dist from client to middle then middle to neighbour
+    
+    - Since for now we can assume the adapter will send the packets slow enough 
+    that the receiving switch will block before a new piece of data is received.
+    A similar issue occurs for switch to switch packet sending. Suggestion from chris
+    is to pattern match the structure of the header to split up packets
 """
 import math
 import ipaddress
