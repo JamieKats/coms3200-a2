@@ -36,7 +36,7 @@ QUESTIONS
     - is the ip assigned to a client only removed from the list of remaining 
     client ips when the greeting protocol finishes or when the offer packet is sent??
     i.e. if commuinication fails between the offfer pkt and the end of greeting 
-    protocol can that ip be used for another client? ASK ON ED
+    protocol can that ip be used for another client? ASK ON ED ............INCREMENT THE IP ONCE THE OFFER PACKET IS SENT
     - Chris mentioned in an ed post that "In IP allocation your switch will 
     ignore out of order packets" so therfore, out of order packets in IP 
     allocation breaks IP allocation and that connection will hang indefinitely? ASK ON ED
