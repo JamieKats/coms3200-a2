@@ -39,16 +39,59 @@ class ConnectedDevices:
         via_device:ipaddress.IPv4Address=None
     ):
         if device_ip not in self.distance_to_devices.keys():
-            self.distance_to_devices[device_ip] = (via_device, new_dist)
+            self.distance_to_devices[device_ip] = [(via_device, new_dist)]
             print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return
         
-        # check if device current distance is < currently saved
-        current_dist = self.distance_to_devices[device_ip]
+        # get list of current paths with same length, can be multiple but will
+        # be one most of the time
+        current_paths: list = self.distance_to_devices[device_ip]
         
-        if new_dist < current_dist and new_dist <= 1000:
-            self.distance_to_devices[device_ip] = (via_device, new_dist)
+        if new_dist > current_paths[0][1] or new_dist > 1000:
+            return
+        
+        # if new dist is same as current dist, append to list of paths
+        if new_dist == current_paths[0][1]:
+            self.distance_to_devices[device_ip].append((via_device, new_dist))
             print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
+            return
+        
+        self.distance_to_devices[device_ip] = (via_device, new_dist)
+        print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
+            
             
     def get_neighbours(self):
         return self.hosts + self.clients
+    
+    
+    def get_neighbour_with_ip(self, ip: ipaddress.IPv4Address):
+        host: device.Device
+        for host in self.hosts:
+            if host.ip == ip:
+                return host
+        
+        client: device.Device
+        for client in self.clients:
+            if client.ip == ip:
+                return client
+        
+        return None
+    
+    def get_ip_with_longest_ip_prefix(self, ips: list, dest_ip: ipaddress.IPv4Address):
+        dest_ip_bin = bin(int(dest_ip))
+        
+        # initialise longest_matching_path as the first
+        longest_matching_path_ip = (path[0], 0)
+        
+        for path in ips:
+            count = 0
+            neighbour_ip_bin = bin(int(path[0]))
+            
+            for i in range(len(neighbour_ip_bin)):
+                if dest_ip_bin[i] != neighbour_ip_bin[i]: return
+                
+                count += 1
+            if count > longest_matching_path_ip[1]:
+                longest_matching_path_ip = (path[0], count)
+                
+        return longest_matching_path_ip[0]

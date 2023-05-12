@@ -565,9 +565,36 @@ class RUSHBSwitch:
                 self.handle_fragments(packet)
         
     
-    # def handle_data_packet(self, packet: pkt.DataPacket):
-    #     if str(packet.dest_ip) in self.connected_devices.distance_to_devices.keys():
+    def handle_data_packet(self, packet: pkt.DataPacket):
+        # if packet is for someone an immediate neighbour send to them
+        neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.src_ip)
+        if neighbour != None:
+            neighbour.send_packet(packet)
+            return
+        
+        # If switch aware of dest send to switch on shortest path with longest 
+        # matching ip prefix
+        if packet.dest_ip in self.connected_devices.distance_to_devices.keys():
+            paths = self.connected_devices.distance_to_devices[packet.dest_ip]
+            if len(paths) == 1:
+                neighbour = self.connected_devices.get_neighbour_with_ip(paths[0][0])
+                neighbour.send_packet(packet)
+                return
             
+            # get neighbour on path with greatest matching prefix of dest ip
+            ips = [path[0] for path in paths]
+            selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
+            neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
+            neighbour.send_packet(packet)
+            return
+            
+        # if dest ip is unknown send to neighbour with longest matching ip prefix
+        ips = [device.ip for device in self.connected_devices.get_neighbours()]
+        selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
+        neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
+        neighbour.send_packet(packet)
+        return
+        
         
         
     def handle_location_packet(self, conn_device: device.Device, packet: pkt.LocationPacket):

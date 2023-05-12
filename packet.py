@@ -40,6 +40,7 @@ class Packet:
     ) -> None:
         self.src_ip: ipaddress.IPv4Address = src_ip # 4 bytes
         self.dest_ip: ipaddress.IPv4Address = dest_ip # 4 bytes
+        
         # self.mode: bytes = bytearray(mode) # 1 byte
         # self.mode: bytes = int.to_bytes(mode, 1, 'big') # 1 byte
         self.mode: int = mode # 1 byte
