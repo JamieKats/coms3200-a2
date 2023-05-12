@@ -189,7 +189,12 @@ class RUSHBSwitch:
         
         self.global_ip_addresses_cidr: ipaddress.ip_network = ipaddress.ip_network(global_ip_addresses_cidr, strict=False)
         self.global_ip_addrs_iter = iter(self.global_ip_addresses_cidr)
-        self.global_ip = next(self.global_ip_addrs_iter)
+        
+        # start client addresses at x.x.x.1 addr
+        next(self.global_ip_addrs_iter)
+        self.global_ip = ipaddress.IPv4Address(global_ip_addresses_cidr.split("/")[0])
+        # print(f"GLOBAL IP: {self.global_ip}")
+        # print(f"GLOBAL IP LIST IS: {list(iter(self.global_ip_addresses_cidr))}")
 
         
     def set_local_ip(self, local_ip_addresses_cidr):
@@ -197,14 +202,21 @@ class RUSHBSwitch:
         
         self.local_ip_addresses_cidr: ipaddress.ip_network = ipaddress.ip_network(local_ip_addresses_cidr, strict=False)
         self.local_ip_addrs_iter = iter(self.local_ip_addresses_cidr)
-        self.local_ip = next(self.local_ip_addrs_iter)
+        
+        # start client addresses at x.x.x.1 addr
+        next(self.local_ip_addrs_iter)
+        self.local_ip = ipaddress.IPv4Address(local_ip_addresses_cidr.split("/")[0])
+        # print(f"LOCAL IP: {self.local_ip}")
+        # print(f"LOCAL IP LIST IS: {list(iter(self.local_ip_addresses_cidr))}")
         
         
     def get_global_client_ip(self) -> ipaddress.IPv4Address:
-        return next(self.global_ip_addrs_iter)
+        client_addr = next(self.global_ip_addrs_iter)
+        return client_addr if client_addr != self.global_ip else next(self.global_ip_addrs_iter)
     
     def get_local_client_ip(self) -> ipaddress.IPv4Address:
-        return next(self.local_ip_addrs_iter)
+        client_addr = next(self.local_ip_addrs_iter)
+        return client_addr if client_addr != self.local_ip else next(self.local_ip_addrs_iter)
         
         
     def start(self):
@@ -262,7 +274,7 @@ class RUSHBSwitch:
             
             # create client and thread if they dont exist
             adapter = device.ClientAdapter(udp_socket=udp_socket, socket_addr=addr)
-            self.connected_devices.add_new_connection(adapter)
+            # self.connected_devices.add_new_connection(adapter)
             
             adapter.packet_queue.put(packet)
                 
@@ -354,6 +366,8 @@ class RUSHBSwitch:
         # create and send acknowledgement packet
         ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=src_ip, dest_ip=client.ip, assigned_ip=client.ip)
         client.send_packet(ack_pkt)
+        
+        self.connected_devices.add_new_connection(client)
         return True
 
     # def location_exchange_with_client(self, client: device.ClientDevice):
@@ -555,6 +569,9 @@ class RUSHBSwitch:
         conn_device.longitude = packet.data[1]
         device_dist = euclidean_dist(conn_device, self)
         self.connected_devices.update_distance_to_device(device_dist, conn_device.ip)
+        print(f"connected hosts: {self.connected_devices.hosts}")
+        print(f"connected clients: {self.connected_devices.clients}")
+        print(f"connected device dist: {self.connected_devices.distance_to_devices}")
         
         # respond to device if they are a client
         if isinstance(conn_device, device.ClientDevice) == True:
@@ -589,7 +606,6 @@ class RUSHBSwitch:
         if offer_pkt.mode != pkt.OFFER_02: return False
         host.ip = offer_pkt.src_ip
         host.my_assigned_ip = offer_pkt.data
-        self.connected_devices.add_new_connection(host)
         
         # create and send request packet
         request_pkt = pkt.RequestPacket(str(host.ip), str(host.my_assigned_ip))
@@ -599,6 +615,7 @@ class RUSHBSwitch:
         ack_pkt = host.receive_packet()
         if ack_pkt.mode != pkt.ACK_04: return False
         
+        self.connected_devices.add_new_connection(host)
         return True
         
         
