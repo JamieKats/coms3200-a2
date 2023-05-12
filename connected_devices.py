@@ -11,7 +11,7 @@ class ConnectedDevices:
     def __init__(self) -> None:
         self.hosts = []
         self.clients = []
-        self.distance_to_devices = {}
+        self.distance_to_devices = {} # dist to neighbours and known non neighbours
     
     def add_new_connection(self, new_device: device.Device):
         """
@@ -43,3 +43,6 @@ class ConnectedDevices:
         if new_dist < current_dist and new_dist <= 1000:
             self.distance_to_devices[device_ip] = (via_device, new_dist)
             print(f"conn devices: updated device info in known distances: {self.distance_to_devices[device_ip]}")
+            
+    def get_neighbours(self):
+        return self.hosts + self.clients

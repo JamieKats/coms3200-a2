@@ -16,10 +16,12 @@ TEST STRINGS
 python3 RUSHBSwitch.py local 192.168.0.1/24 50 20
 
 # mixed switch
-python3 RUSHBSwitch.py local 192.168.0.1/24 130.102.72.10/24 50 20
+python3 RUSHBSwitch.py local 192.168.0.1/24 130.102.72.10/24 20 50
+python3 RUSHBSwitch.py local 192.200.0.1/24 140.102.72.10/24 34 98
 
 # global switch
-python3 RUSHBSwitch.py global 130.102.72.10/24 50 20
+python3 RUSHBSwitch.py global 111.102.72.10/24 70 5
+python3 RUSHBSwitch.py global 150.102.72.10/24 32 76
 
 QUESTIONS
     - How do you know what size data in the data pkt you receive? if mulitple 
@@ -84,7 +86,7 @@ MAX_LAT_LONG = 32767
 BUFFER_SIZE = 1500
 
 def euclidean_dist(p1, p2):
-    return math.sqrt((int(p1.latitude) - int(p2.latitude))**2 + (int(p1.longitude) - int(p2.longitude))**2)
+    return int(math.sqrt((int(p1.latitude) - int(p2.latitude))**2 + (int(p1.longitude) - int(p2.longitude))**2))
 
 class RUSHBSwitch:
     
@@ -517,11 +519,11 @@ class RUSHBSwitch:
         print("host_connection_thread: Greeting proto with host PASSED")
         
         # client switch sends location pkt to host
-        print("Creating location pkt to send to host")
-        print(f"my ip: {host.my_assigned_ip}")
-        print(f"host ip: {host.ip}")
-        print(f"my lat: {self.latitude}")
-        print(f"my long: {self.longitude}")
+        # print("Creating location pkt to send to host")
+        # print(f"my ip: {host.my_assigned_ip}")
+        # print(f"host ip: {host.ip}")
+        # print(f"my lat: {self.latitude}")
+        # print(f"my long: {self.longitude}")
         location_pkt: pkt.LOCATION_08 = pkt.LocationPacket(src_ip=host.my_assigned_ip, dest_ip=host.ip, latitude=self.latitude, longitude=self.longitude)
         host.send_packet(location_pkt)
         print("Sent location pkt to host")
@@ -567,11 +569,16 @@ class RUSHBSwitch:
         print("in handle_location_packet")
         conn_device.latitude = packet.data[0]
         conn_device.longitude = packet.data[1]
+        # print(f"conn device lat: {conn_device.latitude}")
+        # print(f"conn device long: {conn_device.longitude}")
+        # print(f"out lat: {self.latitude}")
+        # print(f"out long: {self.longitude}")
+        
         device_dist = euclidean_dist(conn_device, self)
         self.connected_devices.update_distance_to_device(device_dist, conn_device.ip)
-        print(f"connected hosts: {self.connected_devices.hosts}")
-        print(f"connected clients: {self.connected_devices.clients}")
-        print(f"connected device dist: {self.connected_devices.distance_to_devices}")
+        # print(f"connected hosts: {self.connected_devices.hosts}")
+        # print(f"connected clients: {self.connected_devices.clients}")
+        # print(f"connected device dist: {self.connected_devices.distance_to_devices}")
         
         # respond to device if they are a client
         if isinstance(conn_device, device.ClientDevice) == True:
@@ -579,8 +586,34 @@ class RUSHBSwitch:
             location_pkt: pkt.LocationPacket = pkt.LocationPacket(src_ip=self.global_ip, dest_ip=conn_device.ip, latitude=self.latitude, longitude=self.longitude)
             conn_device.send_packet(location_pkt)
     
-        # send distance packets to other neighbours
-        print("SENDING DISTANCE PACKET TO NEIGHBOURS...")
+        # create dist pkt for each neighbour and send
+        neighbour: device.Device
+        for neighbour in self.connected_devices.get_neighbours():
+            if neighbour == conn_device: continue
+            
+            # distance from location pkt sender to neighbour
+            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][1])
+            dist_pkt: pkt.DistancePacket = pkt.DistancePacket(
+                src_ip=str(self.global_ip), 
+                dest_ip=str(neighbour.ip), 
+                og_ip=str(conn_device.ip), 
+                dist=og_to_neighbour)
+            neighbour.send_packet(dist_pkt)
+            
+            
+    def handle_distance_packet(self, packet: pkt.DistancePacket):
+        """
+        Updates the distance to the client specified in the distance packet
+
+        Args:
+            packet (pkt.DistancePacket): _description_
+        """
+        self.connected_devices.update_distance_to_device(
+            new_dist=packet.data[1], 
+            device_ip=packet.data[0], 
+            via_device=packet.src_ip)
+        
+        
     
     
     def greeting_protocol_with_host(self, host: device.HostSwitch) -> bool:

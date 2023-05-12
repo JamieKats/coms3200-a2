@@ -169,6 +169,22 @@ class LocationPacket(Packet):
         longitude = int.from_bytes(data_bytes[HEADER_SIZE+2:], 'big')
         base_packet.data = (latitude, longitude)
         return base_packet
+    
+class DistancePacket(Packet):
+    def __init__(self, src_ip: str, dest_ip: str, og_ip: str, dist: int) -> None:
+        data = (ipaddress.IPv4Address(og_ip), dist)
+        super().__init__(mode=DISTANCE_09, src_ip=src_ip, dest_ip=dest_ip, data=data)
+        
+    def to_bytes(self):
+        return super().to_bytes() + int(self.data[0]).to_bytes(4, 'big') + int(self.data[1]).to_bytes(4, 'big')
+    
+    @staticmethod
+    def from_bytes(data_bytes):
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        og_ip = int.from_bytes(data_bytes[HEADER_SIZE:HEADER_SIZE+4], 'big')
+        dist = int.from_bytes(data_bytes[HEADER_SIZE+4:], 'big')
+        base_packet.data = (og_ip, dist)
+        return base_packet
         
     
 # def ip2long(ip):

@@ -108,6 +108,8 @@ def _decode_packet(packet_bytes: bytes):
         packet = pkt.ReadyPacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.LOCATION_08:
         packet = pkt.LocationPacket.from_bytes(packet_bytes)
+    elif packet_header.mode == pkt.DISTANCE_09:
+        packet = pkt.DistancePacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.FRAGMENT_0A:
         packet = pkt.FragmentPacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.FRAGMENT_END_0B:
