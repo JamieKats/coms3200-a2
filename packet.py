@@ -175,7 +175,30 @@ class DataPacket(Packet):
         base_packet: Packet = Packet.from_bytes(data_bytes)
         base_packet.data = data_bytes[HEADER_SIZE:].decode()
         return base_packet
+    
+
+class QueryPacket(Packet):
+    def __init__(
+        self, 
+        src_ip: ipaddress.IPv4Address, 
+        dest_ip: ipaddress.IPv4Address
+    ) -> None:
+        super().__init__(mode=ASK_06, src_ip=src_ip, dest_ip=dest_ip)
         
+    # def to_bytes(self):
+    #     return super().to_bytes()
+    
+    # @staticmethod
+    # def from_bytes(data_bytes):
+    #     return super().from_bytes(data_bytes)
+    
+    
+class ReadyPacket(Packet):
+    def __init__(self, src_ip: ipaddress.IPv4Address, dest_ip: ipaddress.IPv4Address) -> None:
+        super().__init__(mode=READY_07, src_ip=src_ip, dest_ip=dest_ip)
+        
+    # def to_bytes(self):
+    #     return super().to_bytes()
         
 class LocationPacket(Packet):
     def __init__(self, 

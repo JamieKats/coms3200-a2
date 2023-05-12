@@ -10,6 +10,7 @@ import ipaddress
 from sender_receiver import SenderReceiver
 import packet as pkt
 import queue
+import time
 
 class Device:
     def __init__(self, conn_socket) -> None:
@@ -48,6 +49,7 @@ class ClientAdapter(ClientDevice):
         super().__init__(conn_socket=udp_socket)
         self.socket_addr = socket_addr
         self.packet_queue = queue.Queue()
+        self.time_last_ready_pkt: time.time = 0
         
     def receive_packet(self) -> pkt.Packet:
         return SenderReceiver.receive_packet_udp(self.packet_queue)

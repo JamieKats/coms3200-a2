@@ -85,6 +85,8 @@ MAX_LAT_LONG = 32767
 
 BUFFER_SIZE = 1500
 
+READY_PACKET_TIME_LIMIT = 5
+
 def euclidean_dist(p1, p2):
     return int(math.sqrt((int(p1.latitude) - int(p2.latitude))**2 + (int(p1.longitude) - int(p2.longitude))**2))
 
@@ -566,6 +568,28 @@ class RUSHBSwitch:
         
     
     def handle_data_packet(self, packet: pkt.DataPacket):
+        # display data if intended for self
+        if packet.dest_ip == self.local_ip or packet.dest_ip == self.global_ip:
+            print(f"Received from {packet.src_ip}: {packet.data}")
+        
+        
+        # if sending to an adapter need to check if query packet has been 
+        # responded to recently, if not send another to adapter
+        dest_device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
+        if isinstance(dest_device, device.ClientAdapter):
+            if device.time_last_ready_pkt + READY_PACKET_TIME_LIMIT < time.time():
+                # send wuery packet
+                query_pkt: pkt.QueryPacket = pkt.QueryPacket(
+                    src_ip=self.local_ip, 
+                    dest_ip=packet.dest_ip)
+                dest_device.send_packet(query_pkt)
+                
+                # receive ready packet
+                ready_packet: pkt.ReadyPacket = dest_device.receive_packet()
+                dest_device.time_last_ready_pkt = time.time()
+                
+                
+        
         # if packet is for someone an immediate neighbour send to them
         neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.src_ip)
         if neighbour != None:
@@ -625,7 +649,9 @@ class RUSHBSwitch:
             if neighbour == conn_device: continue
             
             # distance from location pkt sender to neighbour
-            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][1])
+            # print(f"neighbours: {self.connected_devices.get_neighbours()}")
+            # print((self.connected_devices.distance_to_devices[neighbour.ip]))
+            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][0][1])
             dist_pkt: pkt.DistancePacket = pkt.DistancePacket(
                 src_ip=self.global_ip,
                 dest_ip=neighbour.ip, 
