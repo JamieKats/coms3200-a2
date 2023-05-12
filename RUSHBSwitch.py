@@ -564,6 +564,11 @@ class RUSHBSwitch:
             elif packet.mode == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
                 self.handle_fragments(packet)
         
+    
+    # def handle_data_packet(self, packet: pkt.DataPacket):
+    #     if str(packet.dest_ip) in self.connected_devices.distance_to_devices.keys():
+            
+        
         
     def handle_location_packet(self, conn_device: device.Device, packet: pkt.LocationPacket):
         print("in handle_location_packet")
@@ -575,7 +580,8 @@ class RUSHBSwitch:
         # print(f"out long: {self.longitude}")
         
         device_dist = euclidean_dist(conn_device, self)
-        self.connected_devices.update_distance_to_device(new_dist=device_dist , device_ip=str(conn_device.ip))
+        # print(f"ip in handle {conn_device.ip}")
+        self.connected_devices.update_distance_to_device(new_dist=device_dist , device_ip=conn_device.ip)
         # print(f"connected hosts: {self.connected_devices.hosts}")
         # print(f"connected clients: {self.connected_devices.clients}")
         # print(f"connected device dist: {self.connected_devices.distance_to_devices}")
@@ -592,11 +598,11 @@ class RUSHBSwitch:
             if neighbour == conn_device: continue
             
             # distance from location pkt sender to neighbour
-            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[str(neighbour.ip)][1])
+            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][1])
             dist_pkt: pkt.DistancePacket = pkt.DistancePacket(
-                src_ip=str(self.global_ip), 
-                dest_ip=str(neighbour.ip), 
-                og_ip=str(conn_device.ip), 
+                src_ip=self.global_ip,
+                dest_ip=neighbour.ip, 
+                og_ip=conn_device.ip, 
                 dist=og_to_neighbour)
             neighbour.send_packet(dist_pkt)
             
@@ -608,10 +614,11 @@ class RUSHBSwitch:
         Args:
             packet (pkt.DistancePacket): _description_
         """
+        # print(f"DKJFGBDFKJGBDFGKB {packet.data[0]}")
         self.connected_devices.update_distance_to_device(
             new_dist=packet.data[1], 
-            device_ip=str(packet.data[0]), 
-            via_device=str(packet.src_ip))
+            device_ip=packet.data[0], 
+            via_device=packet.src_ip)
         
         
     
@@ -637,11 +644,12 @@ class RUSHBSwitch:
         # receive offer packet: assign ip to host instance and save ip assigned to you
         offer_pkt = host.receive_packet()
         if offer_pkt.mode != pkt.OFFER_02: return False
+        # print(f"offer pkt src ip: {offer_pkt.src_ip}")
         host.ip = offer_pkt.src_ip
         host.my_assigned_ip = offer_pkt.data
         
         # create and send request packet
-        request_pkt = pkt.RequestPacket(str(host.ip), str(host.my_assigned_ip))
+        request_pkt = pkt.RequestPacket(host.ip, host.my_assigned_ip)
         host.send_packet(request_pkt)
         
         # receive ack packet

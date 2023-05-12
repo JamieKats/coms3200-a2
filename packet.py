@@ -31,9 +31,15 @@ HEADER_SIZE = 12 # bytes
 
 class Packet:
     
-    def __init__(self, mode: int, offset: int=0, src_ip: str="0.0.0.0", dest_ip: str="0.0.0.0", data=None) -> None:
-        self.src_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(src_ip) # 4 bytes
-        self.dest_ip: ipaddress.IPv4Address = ipaddress.IPv4Address(dest_ip) # 4 bytes
+    def __init__(self, 
+                 mode: int, 
+                 offset: int=0, 
+                 src_ip: ipaddress.IPv4Address=ipaddress.IPv4Address("0.0.0.0"), 
+                 dest_ip: ipaddress.IPv4Address=ipaddress.IPv4Address("0.0.0.0"), 
+                 data=None
+    ) -> None:
+        self.src_ip: ipaddress.IPv4Address = src_ip # 4 bytes
+        self.dest_ip: ipaddress.IPv4Address = dest_ip # 4 bytes
         # self.mode: bytes = bytearray(mode) # 1 byte
         # self.mode: bytes = int.to_bytes(mode, 1, 'big') # 1 byte
         self.mode: int = mode # 1 byte
@@ -69,8 +75,8 @@ class Packet:
     @staticmethod
     def from_bytes(data_bytes):
         unpacked_data = struct.unpack("!I I I", data_bytes[:HEADER_SIZE])
-        src_ip = str(ipaddress.IPv4Address(unpacked_data[0]))
-        dest_ip = str(ipaddress.IPv4Address(unpacked_data[1]))
+        src_ip = ipaddress.IPv4Address(unpacked_data[0])
+        dest_ip = ipaddress.IPv4Address(unpacked_data[1])
         # offset = int.to_bytes(data_bytes[2][8:11], 4)
         offset = int.from_bytes(data_bytes[8:11], 'big')
         # mode = unpacked_data[2][11:]
@@ -92,11 +98,6 @@ class Packet:
     
 class DiscoveryPacket(Packet):
     def __init__(self) -> None:
-        # print(f"mode in dis packet init: {DISCOVERY_01}")
-        # print(type(super().__init__))
-        # print(type(ipaddress))
-        # ipaddress.IPv4Network()
-        ip_addr = ipaddress.IPv4Address('0.0.0.0')
         super().__init__(mode=DISCOVERY_01, data=ipaddress.IPv4Address("0.0.0.0"))
         
     def to_bytes(self):
@@ -111,8 +112,8 @@ class DiscoveryPacket(Packet):
         return disc_packet
     
 class OfferPacket(Packet):
-    def __init__(self, src_ip: str, assigned_ip: str) -> None:
-        super().__init__(mode=OFFER_02, src_ip=src_ip, data=ipaddress.IPv4Address(assigned_ip))
+    def __init__(self, src_ip: ipaddress.IPv4Address, assigned_ip: ipaddress.IPv4Address) -> None:
+        super().__init__(mode=OFFER_02, src_ip=src_ip, data=assigned_ip)
         
     def to_bytes(self):
         return super().to_bytes() + struct.pack("!I", int(self.data))
@@ -125,8 +126,8 @@ class OfferPacket(Packet):
         return base_packet
     
 class RequestPacket(Packet):
-    def __init__(self, dest_ip: str, assigned_ip: str) -> None:
-        super().__init__(mode=REQUEST_03, dest_ip=dest_ip, data=ipaddress.IPv4Address(assigned_ip))
+    def __init__(self, dest_ip: ipaddress.IPv4Address, assigned_ip: ipaddress.IPv4Address) -> None:
+        super().__init__(mode=REQUEST_03, dest_ip=dest_ip, data=assigned_ip)
         
     def to_bytes(self):
         return super().to_bytes() + struct.pack("!I", int(self.data))
@@ -139,8 +140,12 @@ class RequestPacket(Packet):
         return base_packet
     
 class AcknowledgePacket(Packet):
-    def __init__(self, src_ip: str, dest_ip: str, assigned_ip: str) -> None:
-        super().__init__(mode=ACK_04, src_ip=src_ip, dest_ip=dest_ip, data=ipaddress.IPv4Address(assigned_ip))
+    def __init__(self, 
+                 src_ip: ipaddress.IPv4Address, 
+                 dest_ip: ipaddress.IPv4Address, 
+                 assigned_ip: ipaddress.IPv4Address
+    ) -> None:
+        super().__init__(mode=ACK_04, src_ip=src_ip, dest_ip=dest_ip, data=assigned_ip)
         
     def to_bytes(self):
         return super().to_bytes() + struct.pack("!I", int(self.data))
@@ -151,10 +156,35 @@ class AcknowledgePacket(Packet):
         unpacked_ack_data = struct.unpack("!I", data_bytes[HEADER_SIZE:])
         base_packet.data = ipaddress.IPv4Address(unpacked_ack_data[0])
         return base_packet
+    
+    
+class DataPacket(Packet):
+    def __init__(self, 
+                 src_ip: ipaddress.IPv4Address, 
+                 dest_ip: ipaddress.IPv4Address, 
+                 data
+    ) -> None:
+        super().__init__(mode=DATA_05, src_ip=src_ip, dest_ip=dest_ip, data=data)
+        
+    def to_bytes(self):
+        return super().to_bytes() + self.data.encode()
+    
+    @staticmethod
+    def from_bytes(data_bytes):
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        base_packet.data = data_bytes[HEADER_SIZE:].decode()
+        return base_packet
         
         
 class LocationPacket(Packet):
-    def __init__(self, src_ip: str, dest_ip: str, latitude: int, longitude: int) -> None:
+    def __init__(self, 
+                 src_ip: ipaddress.IPv4Address, 
+                 dest_ip: ipaddress.IPv4Address, 
+                 latitude: int, 
+                 longitude: int
+    ) -> None:
+        # print(f"pkt ip in location pkt init: {src_ip}")
+        # print(f"pkt ip in location pkt init: {dest_ip}")
         super().__init__(mode=LOCATION_08, src_ip=src_ip, dest_ip=dest_ip, data=(latitude, longitude))
         
     def to_bytes(self):
@@ -171,8 +201,13 @@ class LocationPacket(Packet):
         return base_packet
     
 class DistancePacket(Packet):
-    def __init__(self, src_ip: str, dest_ip: str, og_ip: str, dist: int) -> None:
-        data = (ipaddress.IPv4Address(og_ip), dist)
+    def __init__(self, 
+                 src_ip: ipaddress.IPv4Address, 
+                 dest_ip: ipaddress.IPv4Address, 
+                 og_ip: ipaddress.IPv4Address, 
+                 dist: int
+    ) -> None:
+        data = (og_ip, dist)
         super().__init__(mode=DISTANCE_09, src_ip=src_ip, dest_ip=dest_ip, data=data)
         
     def to_bytes(self):
@@ -185,6 +220,8 @@ class DistancePacket(Packet):
         dist = int.from_bytes(data_bytes[HEADER_SIZE+4:], 'big')
         base_packet.data = (og_ip, dist)
         return base_packet
+    
+    
         
     
 # def ip2long(ip):

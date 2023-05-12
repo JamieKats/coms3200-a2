@@ -6,6 +6,7 @@ functionality involving:
     - prefix matching ip in a packets with known ips
 """
 import device
+import ipaddress
 
 class ConnectedDevices:
     def __init__(self) -> None:
@@ -31,7 +32,12 @@ class ConnectedDevices:
                 return client
         return None
     
-    def update_distance_to_device(self, new_dist: int, device_ip: int, via_device:int=None):
+    def update_distance_to_device(
+        self, 
+        new_dist: int,
+        device_ip: ipaddress.IPv4Address, 
+        via_device:ipaddress.IPv4Address=None
+    ):
         if device_ip not in self.distance_to_devices.keys():
             self.distance_to_devices[device_ip] = (via_device, new_dist)
             print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
