@@ -31,10 +31,10 @@ class ConnectedDevices:
                 return client
         return None
     
-    def update_distance_to_device(self, new_dist, device_ip, via_device=None):
+    def update_distance_to_device(self, new_dist: int, device_ip: int, via_device:int=None):
         if device_ip not in self.distance_to_devices.keys():
             self.distance_to_devices[device_ip] = (via_device, new_dist)
-            print(f"conn devices: added device info to known distances: {self.distance_to_devices[device_ip]}")
+            print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return
         
         # check if device current distance is < currently saved
@@ -42,7 +42,7 @@ class ConnectedDevices:
         
         if new_dist < current_dist and new_dist <= 1000:
             self.distance_to_devices[device_ip] = (via_device, new_dist)
-            print(f"conn devices: updated device info in known distances: {self.distance_to_devices[device_ip]}")
+            print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             
     def get_neighbours(self):
         return self.hosts + self.clients

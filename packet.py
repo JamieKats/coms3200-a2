@@ -181,7 +181,7 @@ class DistancePacket(Packet):
     @staticmethod
     def from_bytes(data_bytes):
         base_packet: Packet = Packet.from_bytes(data_bytes)
-        og_ip = int.from_bytes(data_bytes[HEADER_SIZE:HEADER_SIZE+4], 'big')
+        og_ip = ipaddress.IPv4Address(int.from_bytes(data_bytes[HEADER_SIZE:HEADER_SIZE+4], 'big'))
         dist = int.from_bytes(data_bytes[HEADER_SIZE+4:], 'big')
         base_packet.data = (og_ip, dist)
         return base_packet

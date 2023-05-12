@@ -575,7 +575,7 @@ class RUSHBSwitch:
         # print(f"out long: {self.longitude}")
         
         device_dist = euclidean_dist(conn_device, self)
-        self.connected_devices.update_distance_to_device(device_dist, conn_device.ip)
+        self.connected_devices.update_distance_to_device(new_dist=device_dist , device_ip=str(conn_device.ip))
         # print(f"connected hosts: {self.connected_devices.hosts}")
         # print(f"connected clients: {self.connected_devices.clients}")
         # print(f"connected device dist: {self.connected_devices.distance_to_devices}")
@@ -592,7 +592,7 @@ class RUSHBSwitch:
             if neighbour == conn_device: continue
             
             # distance from location pkt sender to neighbour
-            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][1])
+            og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[str(neighbour.ip)][1])
             dist_pkt: pkt.DistancePacket = pkt.DistancePacket(
                 src_ip=str(self.global_ip), 
                 dest_ip=str(neighbour.ip), 
@@ -610,8 +610,8 @@ class RUSHBSwitch:
         """
         self.connected_devices.update_distance_to_device(
             new_dist=packet.data[1], 
-            device_ip=packet.data[0], 
-            via_device=packet.src_ip)
+            device_ip=str(packet.data[0]), 
+            via_device=str(packet.src_ip))
         
         
     
