@@ -1,0 +1,23 @@
+45900
+Connecting to port: 58085
+<class 'device.HostSwitch'>
+host_connection_thread: Greeting proto with host PASSED
+in handle_location_packet
+hosts: [IPv4Address('130.0.0.1')]
+clients: []
+<class 'device.ClientAdapter'>
+in client listen thread
+udp packet receved from queue: b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00'
+end of listen udp socket
+udp packet receved from queue: b'\x00\x00\x00\x00\xc0\xa8\x01\x01\x00\x00\x00\x03\xc0\xa8\x01\x02'
+client_listen_thread: Greeting proto with client PASSED
+udp packet receved from queue: b'\xc0\xa8\x01\x02\x87\x00\x00\x01\x00\x00\x00\x05HELLO WORLD'
+data packet src: 192.168.1.2
+data packet dest: 135.0.0.1
+device distances: {IPv4Address('130.0.0.1'): [(None, 2)], IPv4Address('20.0.0.1'): [(IPv4Address('130.0.0.1'), 10)]}
+hosts: [IPv4Address('130.0.0.1')]
+clients: [IPv4Address('192.168.1.2')]
+neighbours: [IPv4Address('130.0.0.1'), IPv4Address('192.168.1.2')]
+checking ip: 130.0.0.1
+checking ip: 192.168.1.2
+longest matching ip: 130.0.0.1

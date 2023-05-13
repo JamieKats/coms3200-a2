@@ -550,6 +550,7 @@ class Connection:
         sys.stderr.flush()
         tcp_sock.listen()
         conn, addr = tcp_sock.accept()
+        print(addr)
         self._target_sockets.append(conn)
         switch_name = "[S] "
         self._switch_offer(conn, addr, host_ip="130.0.0.1", assigned_ip="130.0.0.2", switch_name=switch_name)

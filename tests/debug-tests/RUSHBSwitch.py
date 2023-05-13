@@ -73,6 +73,9 @@ QUESTIONS
     
     - scapy files provided in test folders dont work, if you delete the folder 
     and pip install scapy then the test files run
+    
+    TESTS PASSED
+    SWITCH_GREETING_ADAPTER
 """
 import math
 import ipaddress
@@ -143,6 +146,8 @@ class RUSHBSwitch:
         self.connected_devices = ConnectedDevices()
         
         # set host ip with ipaddress.ip_network iterator
+        self.global_ip = None
+        self.local_ip = None
         self.set_global_ip(global_ip_addresses_cidr)
         self.set_local_ip(local_ip_addresses_cidr)
         
@@ -274,8 +279,8 @@ class RUSHBSwitch:
             packet = packet_information[0]
             addr = packet_information[1]
             
-            print(f"UDP message: {packet}")
-            print(f"UDP addr: {addr}")
+            # print(f"UDP message: {packet}")
+            # print(f"UDP addr: {addr}")
             
             
             # create adapterClient instance only if client doesnt already exist
@@ -381,7 +386,6 @@ class RUSHBSwitch:
         #     return False
         
         # create and send acknowledgement packet
-        print(f"ack packet ip = {client.ip}")
         ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=src_ip, dest_ip=client.ip, assigned_ip=client.ip)
         client.send_packet(ack_pkt)
         
@@ -499,6 +503,7 @@ class RUSHBSwitch:
             
             # create client switch object
             host = device.HostSwitch(conn_socket=switch_socket)
+            self.connected_devices.add_new_connection(host)
             
             # greeting protocol needs to complete before client (self) can 
             # receive any message from host
@@ -542,7 +547,6 @@ class RUSHBSwitch:
         # print(f"my long: {self.longitude}")
         location_pkt: pkt.LOCATION_08 = pkt.LocationPacket(src_ip=host.my_assigned_ip, dest_ip=host.ip, latitude=self.latitude, longitude=self.longitude)
         host.send_packet(location_pkt)
-        print("Sent location pkt to host")
         
         
         # # recevie location pkt response from host
@@ -585,7 +589,9 @@ class RUSHBSwitch:
         if packet.dest_ip == self.local_ip or packet.dest_ip == self.global_ip:
             print(f"Received from {packet.src_ip}: {packet.data}")
         
-        
+        print(f"data packet src: {packet.src_ip}")
+        print(f"data packet dest: {packet.dest_ip}")
+        print(f"device distances: {self.connected_devices.distance_to_devices}")
         # if sending to an adapter need to check if query packet has been 
         # responded to recently, if not send another to adapter
         dest_device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
@@ -603,8 +609,10 @@ class RUSHBSwitch:
                 
                 
         
+        # print("RECEVED DEST IP IS UNKNONW")
         # if packet is for someone an immediate neighbour send to them
-        neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.src_ip)
+        neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
+        # print(f"neightbour: {neighbour}")
         if neighbour != None:
             neighbour.send_packet(packet)
             return
@@ -626,11 +634,23 @@ class RUSHBSwitch:
             return
             
         # if dest ip is unknown send to neighbour with longest matching ip prefix
+        # ips = [device.ip for device in self.connected_devices.get_neighbours()] + [ip for ip in self.connected_devices.distance_to_devices.keys()]
         ips = [device.ip for device in self.connected_devices.get_neighbours()]
+        print(f"neighbours: {ips}")
         selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
         neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
         neighbour.send_packet(packet)
         return
+    
+    
+    def modify_pkt_source_and_forward_data(self, packet: pkt.DataPacket):
+        """
+        Modifies the src address in the packet to be the ip address the dest 
+        knows me as
+
+        Args:
+            packet (pkt.DataPacket): _description_
+        """
         
         
         

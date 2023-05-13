@@ -28,7 +28,6 @@ class ConnectedDevices:
             self.hosts.append(new_device)
 
     def get_udp_client_with_addr(self, addr):
-        print(f"SIZE OF CLIENT LIST: {len(self.clients)}")
         for client in self.clients:
             # print(isinstance(client, device.ClientAdapter))
             if isinstance(client, device.ClientAdapter) and client.socket_addr == addr:
@@ -43,7 +42,7 @@ class ConnectedDevices:
     ):
         if device_ip not in self.distance_to_devices.keys():
             self.distance_to_devices[device_ip] = [(via_device, new_dist)]
-            print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
+            # print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return
         
         # get list of current paths with same length, can be multiple but will
@@ -56,14 +55,16 @@ class ConnectedDevices:
         # if new dist is same as current dist, append to list of paths
         if new_dist == current_paths[0][1]:
             self.distance_to_devices[device_ip].append((via_device, new_dist))
-            print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
+            # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return
         
         self.distance_to_devices[device_ip] = (via_device, new_dist)
-        print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
+        # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             
             
     def get_neighbours(self):
+        print(f"hosts: {[x.ip for x in self.hosts]}")
+        print(f"clients: {[x.ip for x in self.clients]}")
         return self.hosts + self.clients
     
     
@@ -84,17 +85,19 @@ class ConnectedDevices:
         dest_ip_bin = bin(int(dest_ip))
         
         # initialise longest_matching_path as the first
-        longest_matching_path_ip = (path[0], 0)
+        longest_matching_path_ip = (ips[0], 0)
         
-        for path in ips:
+        for ip in ips:
+            print(f"checking ip: {ip}")
             count = 0
-            neighbour_ip_bin = bin(int(path[0]))
+            neighbour_ip_bin = bin(int(ip))
             
             for i in range(len(neighbour_ip_bin)):
-                if dest_ip_bin[i] != neighbour_ip_bin[i]: return
+                if dest_ip_bin[i] != neighbour_ip_bin[i]: break
                 
                 count += 1
             if count > longest_matching_path_ip[1]:
-                longest_matching_path_ip = (path[0], count)
-                
+                longest_matching_path_ip = (ip, count)
+            
+        print(f"longest matching ip: {longest_matching_path_ip[0]}")
         return longest_matching_path_ip[0]

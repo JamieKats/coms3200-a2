@@ -17,17 +17,6 @@ FRAGMENT_END_0B = 0x0b
 
 HEADER_SIZE = 12 # bytes
 
-# def header_from_bytes(data: bytearray):
-#     unpacked_data = struct.unpack("!i i i L", data)
-#     mode = unpacked_data[3]
-#     offset = unpacked_data[2]
-#     src_ip = str(ipaddress.IPv4Address(unpacked_data[0]))
-#     dest_ip = str(ipaddress.IPv4Address(unpacked_data[1]))
-#     # print(unpacked_data)
-#     # print(ipaddress.IPv4Address(unpacked_data[0]))
-#     # print(ipaddress.IPv4Address(unpacked_data[1]))
-#     return Packet(mode=mode, offset=offset, src_ip=src_ip, dest_ip=dest_ip)
-
 
 class Packet:
     
