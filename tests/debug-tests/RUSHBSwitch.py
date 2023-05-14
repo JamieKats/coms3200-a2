@@ -297,7 +297,9 @@ class RUSHBSwitch:
             
             # create client and thread if they dont exist
             adapter = device.ClientAdapter(udp_socket=udp_socket, socket_addr=addr)
-            self.connected_devices.add_new_connection(adapter)
+            
+            # print(f"adapter type returned: {adapter.__class__}")
+            # self.connected_devices.add_new_connection(adapter)
             
             adapter.packet_queue.put(packet)
             
@@ -327,7 +329,8 @@ class RUSHBSwitch:
             
             # create client connection instance
             client = device.ClientSwitch(conn_socket)
-            self.connected_devices.add_new_connection(conn_socket)
+            # print(f"client type returned: {client.__class__}")
+            # self.connected_devices.add_new_connection(client)
             
             # create thread to handle client incoming messages
             client_listener_thread = threading.Thread(
@@ -395,7 +398,9 @@ class RUSHBSwitch:
         ack_pkt: pkt.AcknowledgePacket = pkt.AcknowledgePacket(src_ip=src_ip, dest_ip=client.ip, assigned_ip=client.ip)
         client.send_packet(ack_pkt)
         
-        # self.connected_devices.add_new_connection(client)
+        # print(f"        clients: {self.connected_devices.clients}")
+        # print(f"        ciient ip: {self.connected_devices.clients[0].ip}")
+        self.connected_devices.add_new_connection(client)
         return True
 
     # def location_exchange_with_client(self, client: device.ClientDevice):
@@ -516,7 +521,8 @@ class RUSHBSwitch:
             
             # create client switch object
             host = device.HostSwitch(conn_socket=switch_socket)
-            self.connected_devices.add_new_connection(host)
+            # print(f"host type returned: {host}")
+            # self.connected_devices.add_new_connection(host)
             
             # greeting protocol needs to complete before client (self) can 
             # receive any message from host
@@ -656,7 +662,7 @@ class RUSHBSwitch:
             
         # if dest ip is unknown send to neighbour with longest matching ip prefix
         # ips = [device.ip for device in self.connected_devices.get_neighbours()] + [ip for ip in self.connected_devices.distance_to_devices.keys()]
-        ips = [device.ip for device in self.connected_devices.get_neighbours()]
+        ips = [device.ip for device in self.connected_devices.get_neighbours_ips()]
         print(f"neighbours: {ips}")
         selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
         neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
@@ -712,8 +718,12 @@ class RUSHBSwitch:
     
         # create dist pkt for each neighbour and send
         neighbour: device.Device
-        for neighbour in self.connected_devices.get_neighbours():
+        # print(f"    neighbours: {self.connected_devices.get_neighbours()}")
+        for neighbour in self.connected_devices.get_neighbours_ips():
             if neighbour == conn_device: continue
+            print(f"                 nieghtbour ip: {neighbour.ip}")
+            print(f"                 nieghtbour ip: {neighbour.latitude}")
+            print(f"                 nieghtbour ip: {neighbour.longitude}")
             
             # distance from location pkt sender to neighbour
             # print(f"neighbours: {self.connected_devices.get_neighbours()}")
@@ -766,7 +776,7 @@ class RUSHBSwitch:
         # if the distance was updated relay distance packets to all neighbours 
         # except the ip in the src field (who sent the ditance packet)
         neighbour: device.Device
-        for neighbour in self.connected_devices.get_neighbours():
+        for neighbour in self.connected_devices.get_neighbours_ips():
             if neighbour.ip == packet.src_ip: continue
             
             src_ip = self.get_my_ip_for_device(neighbour)
@@ -788,6 +798,7 @@ class RUSHBSwitch:
         Args:
             host (device.HostSwitch): _description_
         """
+        print(f"host object in greeting proto: {host}")
         # send host dicsovery packet
         # discovery_pkt = pkt.Packet(
         #     mode=pkt.DISCOVERY_01
@@ -797,12 +808,16 @@ class RUSHBSwitch:
         host.send_packet(discovery_pkt)
         
         # receive offer packet: assign ip to host instance and save ip assigned to you
+        print(True)
         offer_pkt = host.receive_packet()
-        if offer_pkt.mode != pkt.OFFER_02: return False
+        print(False)
+        if offer_pkt.mode != pkt.OFFER_02: 
+            print(F"OFFER PACKET NOT RECEIVED.......... {offer_pkt.mode}")
+            return False
         # print(f"offer pkt src ip: {offer_pkt.src_ip}")
         host.ip = offer_pkt.src_ip
         host.my_assigned_ip = offer_pkt.data
-        
+        print(f"host ip saved in greeting proto: {host.ip}")
         # create and send request packet
         request_pkt = pkt.RequestPacket(host.ip, host.my_assigned_ip)
         host.send_packet(request_pkt)
@@ -811,8 +826,10 @@ class RUSHBSwitch:
         ack_pkt = host.receive_packet()
         if ack_pkt.mode != pkt.ACK_04: return False
         
-        # self.connected_devices.add_new_connection(host)
-        print(f"host {host.ip} offered me {host.my_assigned_ip}")
+        # print(f"        host {host.ip} offered me {host.my_assigned_ip}")
+        # print(f"        hosts: {self.connected_devices.hosts}")
+        # print(f"        host ip: {self.connected_devices.hosts[0].ip}")
+        self.connected_devices.add_new_connection(host)
         return True
         
         

@@ -63,7 +63,7 @@ class ConnectedDevices:
         # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             
             
-    def get_neighbours(self):
+    def get_neighbours_ips(self):
         print(f"hosts: {[x.ip for x in self.hosts]}")
         print(f"clients: {[x.ip for x in self.clients]}")
         return self.hosts + self.clients
