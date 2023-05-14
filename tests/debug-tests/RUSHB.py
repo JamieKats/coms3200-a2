@@ -608,7 +608,10 @@ class Connection:
         self._switch_offer(conn_1, addr_1, host_ip="135.0.0.1", assigned_ip="135.0.0.2", location=(0, 0), switch_name=switch_1_name)
 
         tcp_sock_2.listen()
+        print(" ABOVE ACCEPT")
+        # time.sleep(10)
         conn_2, addr_2 = tcp_sock_2.accept()
+        print("BELOW ACCEPT")
         self._target_sockets.append(conn_2)
         switch_2_name = "[S2] "
         self._switch_offer(conn_2, addr_2, host_ip="136.0.0.1", assigned_ip="136.0.0.2", location=(0, 4), switch_name=switch_2_name)

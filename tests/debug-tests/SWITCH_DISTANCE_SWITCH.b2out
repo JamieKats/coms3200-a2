@@ -1,0 +1,65 @@
+45209
+Sleeping between connect commands...
+Connecting to port: 48921
+Sleeping between connect commands...
+<class 'device.HostSwitch'>
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x01'
+offset mode as int: 1
+src ip: 0.0.0.0 = 0
+dest_ip: 0.0.0.0 = 0
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x03'
+offset mode as int: 3
+src ip: 0.0.0.0 = 0
+dest_ip: 135.0.0.1 = 2264924161
+host 135.0.0.1 offered me 135.0.0.2
+host_connection_thread: Greeting proto with host PASSED
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x08'
+offset mode as int: 8
+src ip: 135.0.0.2 = 2264924162
+dest_ip: 135.0.0.1 = 2264924161
+in handle_location_packet
+hosts: [IPv4Address('135.0.0.1')]
+clients: []
+Connecting to port: 45069
+Sleeping between connect commands...
+<class 'device.HostSwitch'>
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x01'
+offset mode as int: 1
+src ip: 0.0.0.0 = 0
+dest_ip: 0.0.0.0 = 0
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x03'
+offset mode as int: 3
+src ip: 0.0.0.0 = 0
+dest_ip: 136.0.0.1 = 2281701377
+host 136.0.0.1 offered me 136.0.0.2
+host_connection_thread: Greeting proto with host PASSED
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\x08'
+offset mode as int: 8
+src ip: 136.0.0.2 = 2281701378
+dest_ip: 136.0.0.1 = 2281701377
+in handle_location_packet
+hosts: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1')]
+clients: []
+IN PACKET TO BYTES
+offset bytes: b'\x00\x00\x00'
+mode_bytes: b'\t'
+offset mode as int: 9
+src ip: 135.0.0.2 = 2264924162
+dest_ip: 135.0.0.1 = 2264924161
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...

@@ -74,8 +74,11 @@ QUESTIONS
     - scapy files provided in test folders dont work, if you delete the folder 
     and pip install scapy then the test files run
     
-    TESTS PASSED
+TESTS PASSED
     SWITCH_GREETING_ADAPTER
+    
+TESTS TO COME BACK TO
+    SWITCH_FORWARD_MESSAGE
 """
 import math
 import ipaddress
@@ -452,6 +455,12 @@ class RUSHBSwitch:
         
     def stdin_listener_thread(self, incoming_stdin_queue: queue.Queue):
          while True:
+            # NOTE sleep is to fix tests failing because stdin is redirected to 
+            # file and this method reads the two "connect <port>" commands and tries to connect
+            # much faster than the test cases set up the switches 
+            print("Sleeping between connect commands...")
+            time.sleep(1)
+            
             try:
                 command = input().strip().split(" ")
             except EOFError:
@@ -469,6 +478,7 @@ class RUSHBSwitch:
             print(f"Connecting to port: {port}")
             
             incoming_stdin_queue.put(port)
+            
             
 
     def run_switch(self):
@@ -498,7 +508,7 @@ class RUSHBSwitch:
             
             switch_socket = self.connect_to_switch(port)
             if switch_socket == None:
-                print("Connection failed...") # TODO
+                print(f"Connection port {port} failed...") # TODO
                 continue
             
             # create client switch object
@@ -585,6 +595,7 @@ class RUSHBSwitch:
         
     
     def handle_data_packet(self, packet: pkt.DataPacket):
+        print(f"DATA IN PACKET: {packet.data}")
         # display data if intended for self
         if packet.dest_ip == self.local_ip or packet.dest_ip == self.global_ip:
             print(f"Received from {packet.src_ip}: {packet.data}")
@@ -601,7 +612,9 @@ class RUSHBSwitch:
                 query_pkt: pkt.QueryPacket = pkt.QueryPacket(
                     src_ip=self.local_ip, 
                     dest_ip=packet.dest_ip)
-                dest_device.send_packet(query_pkt)
+                # dest_device.send_packet(query_pkt)
+                self.modify_pkt_source_and_forward_data(packet, dest_device)
+                
                 
                 # receive ready packet
                 ready_packet: pkt.ReadyPacket = dest_device.receive_packet()
@@ -614,7 +627,8 @@ class RUSHBSwitch:
         neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
         # print(f"neightbour: {neighbour}")
         if neighbour != None:
-            neighbour.send_packet(packet)
+            # neighbour.send_packet(packet)
+            self.modify_pkt_source_and_forward_data(packet, neighbour)
             return
         
         # If switch aware of dest send to switch on shortest path with longest 
@@ -623,14 +637,16 @@ class RUSHBSwitch:
             paths = self.connected_devices.distance_to_devices[packet.dest_ip]
             if len(paths) == 1:
                 neighbour = self.connected_devices.get_neighbour_with_ip(paths[0][0])
-                neighbour.send_packet(packet)
+                # neighbour.send_packet(packet)
+                self.modify_pkt_source_and_forward_data(packet, neighbour)
                 return
             
             # get neighbour on path with greatest matching prefix of dest ip
             ips = [path[0] for path in paths]
             selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
             neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
-            neighbour.send_packet(packet)
+            # neighbour.send_packet(packet)
+            self.modify_pkt_source_and_forward_data(packet, neighbour)
             return
             
         # if dest ip is unknown send to neighbour with longest matching ip prefix
@@ -639,11 +655,12 @@ class RUSHBSwitch:
         print(f"neighbours: {ips}")
         selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
         neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
-        neighbour.send_packet(packet)
+        # neighbour.send_packet(packet)
+        self.modify_pkt_source_and_forward_data(packet, neighbour)
         return
     
     
-    def modify_pkt_source_and_forward_data(self, packet: pkt.DataPacket):
+    def modify_pkt_source_and_forward_data(self, packet: pkt.DataPacket, neighbour: device.Device):
         """
         Modifies the src address in the packet to be the ip address the dest 
         knows me as
@@ -651,6 +668,18 @@ class RUSHBSwitch:
         Args:
             packet (pkt.DataPacket): _description_
         """
+        print(f"device class: {neighbour.__class__}")
+        packet.dest_ip = neighbour.ip
+        if isinstance(neighbour, device.HostSwitch):
+            packet.src_ip = neighbour.my_assigned_ip
+            print(f"my assigned: {neighbour.my_assigned_ip}")
+
+        print()
+        print(f"sent packet src ip: {packet.src_ip}")
+        print(f"sent packet dest ip: {packet.dest_ip}")
+        print(f"sent packet mode: {packet.mode}")
+        print()
+        neighbour.send_packet(packet)
         
         
         
@@ -685,12 +714,33 @@ class RUSHBSwitch:
             # print(f"neighbours: {self.connected_devices.get_neighbours()}")
             # print((self.connected_devices.distance_to_devices[neighbour.ip]))
             og_to_neighbour: int = int(device_dist) + int(self.connected_devices.distance_to_devices[neighbour.ip][0][1])
+            
+            # print()
+            # print("CREATING DIST PACKET")
+            # print(f"src ip: {self.global_ip}")
+            # print(f"dest ip: {neighbour.ip}")
+            # print(f"og ip: {conn_device.ip}")
+            # print(f"dist: {og_to_neighbour}")
+            # print()
+            
             dist_pkt: pkt.DistancePacket = pkt.DistancePacket(
-                src_ip=self.global_ip,
+                src_ip=self.get_my_ip_for_device(neighbour),
                 dest_ip=neighbour.ip, 
                 og_ip=conn_device.ip, 
                 dist=og_to_neighbour)
             neighbour.send_packet(dist_pkt)
+            
+    
+    def get_my_ip_for_device(self, neighbour: device.Device):
+        """
+        returns the ip I am known as to the given device
+        """
+        if isinstance(neighbour, device.ClientSwitch):
+            return self.global_ip
+        if isinstance(neighbour, device.ClientAdapter):
+            return self.local_ip
+        if isinstance(neighbour, device.HostSwitch):
+            return neighbour.my_assigned_ip
             
             
     def handle_distance_packet(self, packet: pkt.DistancePacket):
@@ -743,6 +793,7 @@ class RUSHBSwitch:
         if ack_pkt.mode != pkt.ACK_04: return False
         
         # self.connected_devices.add_new_connection(host)
+        print(f"host {host.ip} offered me {host.my_assigned_ip}")
         return True
         
         
