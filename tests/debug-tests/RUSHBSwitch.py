@@ -582,6 +582,8 @@ class RUSHBSwitch:
             except ConnectionResetError:
                 return
             
+            if packet == None: return
+            
             if packet.mode == pkt.DATA_05:
                 self.handle_data_packet(packet)
             elif packet.mode == pkt.READY_07:

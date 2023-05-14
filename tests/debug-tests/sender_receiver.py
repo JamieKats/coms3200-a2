@@ -79,6 +79,9 @@ class SenderReceiver:
             packet_bytes = conn_socket.recv(MAX_BUFFER_SIZE)
         except OSError:
             return None
+        
+        if packet_bytes == b'': return None
+        # print(f"RECEVIED PACKET BYTES: {packet_bytes}")
 
         return _decode_packet(packet_bytes)
     
