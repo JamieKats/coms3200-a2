@@ -76,9 +76,12 @@ QUESTIONS
     
 TESTS PASSED
     SWITCH_GREETING_ADAPTER
+    SWITCH_DISTANCE_SWITCH
     
 TESTS TO COME BACK TO
     SWITCH_FORWARD_MESSAGE
+    SWITCH_ROUTING_SIMPLE
+    SWITCH_ROUTING_PREFIX
 """
 import math
 import ipaddress
@@ -753,12 +756,26 @@ class RUSHBSwitch:
             packet (pkt.DistancePacket): _description_
         """
         # print(f"DKJFGBDFKJGBDFGKB {packet.data[0]}")
-        self.connected_devices.update_distance_to_device(
+        dist_updated = self.connected_devices.update_distance_to_device(
             new_dist=packet.data[1], 
             device_ip=packet.data[0], 
             via_device=packet.src_ip)
         
+        if dist_updated == False: return
         
+        # if the distance was updated relay distance packets to all neighbours 
+        # except the ip in the src field (who sent the ditance packet)
+        neighbour: device.Device
+        for neighbour in self.connected_devices.get_neighbours():
+            if neighbour.ip == packet.src_ip: continue
+            
+            src_ip = self.get_my_ip_for_device(neighbour)
+            dest_ip = neighbour.ip
+            dist = packet.data[1] + self.connected_devices.distance_to_devices[neighbour.ip][0][1]
+            
+            new_packet: pkt.DistancePacket = pkt.DistancePacket(src_ip=src_ip, dest_ip=dest_ip, og_ip=packet.data[0], dist=dist)
+            
+            neighbour.send_packet(new_packet)
     
     
     def greeting_protocol_with_host(self, host: device.HostSwitch) -> bool:

@@ -1,0 +1,63 @@
+50024
+Sleeping between connect commands...
+Connecting to port: 47215
+Sleeping between connect commands...
+<class 'device.HostSwitch'>
+host 135.0.0.1 offered me 135.0.0.2
+host_connection_thread: Greeting proto with host PASSED
+in handle_location_packet
+hosts: [IPv4Address('135.0.0.1')]
+clients: []
+Connecting to port: 56595
+Sleeping between connect commands...
+<class 'device.HostSwitch'>
+host 136.0.0.1 offered me 136.0.0.2
+host_connection_thread: Greeting proto with host PASSED
+in handle_location_packet
+hosts: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1')]
+clients: []
+hosts: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1')]
+clients: []
+Sleeping between connect commands...
+hosts: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1')]
+clients: []
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+<class 'device.ClientAdapter'>
+in client listen thread
+udp packet receved from queue: b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00'
+end of listen udp socket
+udp packet receved from queue: b'\x00\x00\x00\x00\xc0\xa8\x01\x01\x00\x00\x00\x03\xc0\xa8\x01\x02'
+client_listen_thread: Greeting proto with client PASSED
+udp packet receved from queue: b'\xc0\xa8\x01\x02\x81\x00\x00\x01\x00\x00\x00\x05HELLO WORLD'
+DATA IN PACKET: HELLO WORLD
+data packet src: 192.168.1.2
+data packet dest: 129.0.0.1
+device distances: {IPv4Address('135.0.0.1'): [(None, 2)], IPv4Address('136.0.0.1'): [(None, 2)], IPv4Address('134.0.0.1'): (IPv4Address('136.0.0.1'), 3)}
+hosts: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1')]
+clients: [IPv4Address('192.168.1.2')]
+neighbours: [IPv4Address('135.0.0.1'), IPv4Address('136.0.0.1'), IPv4Address('192.168.1.2')]
+checking ip: 135.0.0.1
+checking ip: 136.0.0.1
+checking ip: 192.168.1.2
+longest matching ip: 135.0.0.1
+device class: <class 'device.HostSwitch'>
+my assigned: 135.0.0.2
+
+sent packet src ip: 135.0.0.2
+sent packet dest ip: 135.0.0.1
+sent packet mode: 5
+
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...

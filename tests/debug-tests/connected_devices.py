@@ -39,26 +39,27 @@ class ConnectedDevices:
         new_dist: int,
         device_ip: ipaddress.IPv4Address, 
         via_device:ipaddress.IPv4Address=None
-    ):
+    ) -> bool:
         if device_ip not in self.distance_to_devices.keys():
             self.distance_to_devices[device_ip] = [(via_device, new_dist)]
             # print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
-            return
+            return True
         
         # get list of current paths with same length, can be multiple but will
         # be one most of the time
         current_paths: list = self.distance_to_devices[device_ip]
         
         if new_dist > current_paths[0][1] or new_dist > 1000:
-            return
+            return False
         
         # if new dist is same as current dist, append to list of paths
         if new_dist == current_paths[0][1]:
             self.distance_to_devices[device_ip].append((via_device, new_dist))
             # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
-            return
+            return True
         
         self.distance_to_devices[device_ip] = (via_device, new_dist)
+        return True
         # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             
             
