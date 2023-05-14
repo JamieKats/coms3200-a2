@@ -77,11 +77,14 @@ QUESTIONS
 TESTS PASSED
     SWITCH_GREETING_ADAPTER
     SWITCH_DISTANCE_SWITCH
+    SWITCH_GLOBAL_GREETING
     
 TESTS TO COME BACK TO
     SWITCH_FORWARD_MESSAGE
     SWITCH_ROUTING_SIMPLE
     SWITCH_ROUTING_PREFIX
+    MINIMAP_3 (need to know if switches send other switches query/ready packets)
+    SWITCH_LOCAL2_GREETING
 """
 import math
 import ipaddress
@@ -290,7 +293,9 @@ class RUSHBSwitch:
             
             
             # create adapterClient instance only if client doesnt already exist
-            existing_adapter = self.connected_devices.get_udp_client_with_addr(addr)
+            # existing_adapter = self.connected_devices.get_udp_client_with_addr(addr)
+            existing_adapter = self.connected_devices.seen_adapters.get(addr)
+            print(f"exiosting adapet: {existing_adapter}")
             if existing_adapter is not None: # adapter already exists
                 existing_adapter.packet_queue.put(packet)
                 continue
@@ -302,6 +307,7 @@ class RUSHBSwitch:
             # self.connected_devices.add_new_connection(adapter)
             
             adapter.packet_queue.put(packet)
+            self.connected_devices.seen_adapters[addr] = adapter
             
             adapter_client_thread = threading.Thread(
                 target=self.client_listen_thread,
@@ -590,6 +596,10 @@ class RUSHBSwitch:
                 packet = device.receive_packet()
             except ConnectionResetError:
                 return
+            
+            print()
+            print(f"handling packet: {packet.mode}")
+            print()
             
             if packet == None: return
             

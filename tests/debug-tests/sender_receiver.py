@@ -106,7 +106,7 @@ def _decode_packet(packet_bytes: bytes):
     elif packet_header.mode == pkt.DATA_05:
         packet = pkt.DataPacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.ASK_06:
-        packet = pkt.AskPacket.from_bytes(packet_bytes)
+        packet = pkt.QueryPacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.READY_07:
         packet = pkt.ReadyPacket.from_bytes(packet_bytes)
     elif packet_header.mode == pkt.LOCATION_08:

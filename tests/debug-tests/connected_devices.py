@@ -13,6 +13,10 @@ class ConnectedDevices:
         self.hosts = []
         self.clients = []
         self.distance_to_devices = {} # dist to neighbours and known non neighbours
+        
+        # map of seen addresses to their adapters, used to pass adapter packets
+        # to the correct adapter before they have been given their ip
+        self.seen_adapters: dict = {}
     
     def add_new_connection(self, new_device: device.Device):
         """
