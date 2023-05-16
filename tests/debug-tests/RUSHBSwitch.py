@@ -27,6 +27,7 @@ python3 RUSHBSwitch.py global 111.102.72.10/24 70 5
 python3 RUSHBSwitch.py global 150.102.72.10/24 32 76
 
 QUESTIONS
+ANSWERED QNS
     - How do you know what size data in the data pkt you receive? if mulitple 
     msgs in buffer then need to know how big data packet is so you dont read into the next packet in the buffer
     NOTE: adding a seperater to p[ackets ownt help since the adapter is not aware. I believe there needs to be some sort of data length field
@@ -63,16 +64,32 @@ QUESTIONS
     telling your neighbouring switches the distance to the new switch connected 
     to you to your neighbours is the stright line?? AKA it skips the middle router??
     A: not in straight line, it is dist from client to middle then middle to neighbour
-    
     - Since for now we can assume the adapter will send the packets slow enough 
     that the receiving switch will block before a new piece of data is received.
     A similar issue occurs for switch to switch packet sending. Suggestion from chris
     is to pattern match the structure of the header to split up packets. Suggestion
     from arthur is this shouldnt be an issue or you can put sleeps in between 
     sending the packets so you dont get multiple packets in the buffer
-    
+
+NEW QNS    
     - scapy files provided in test folders dont work, if you delete the folder 
     and pip install scapy then the test files run
+    - Unsure about solution to online subnetting qn http://gaia.cs.umass.edu/kurose_ross/interactive/subnet_addressing.php
+    - Part A ask about 2 c if have time
+    - for the slotted alhoa qns is it fair to say that the packets are always sent at the
+    beginning of the next time slot t=x qn 4, 28 and for pure aloha the packets are sent
+    immediately when they arrive
+    - qn 6 assuming round robin pattern is g, r, g, r and first to enter queue is first to
+    leave that queue
+    - qn 9 assuming aloha qns dont need propegation time since there is no channel sensing
+    packets are just sent and they either collide or they dont
+    - qn 23 diff between pure aloha and csma without cd
+    - qn 24 should this qn be asking about location 6 or 4??
+    - qn 29 confirm diff between eBGP and iBGP,  eBGP means gatway router 
+    receives info from connected AS about new prefix, iBGP means the gateway 
+    router tells all other routers in AS about new prefix. Then OSPF is so 
+    routers know shortest path out of the AS to a prefix aka hot potato
+    
     
 TESTS PASSED
     SWITCH_GREETING_ADAPTER
