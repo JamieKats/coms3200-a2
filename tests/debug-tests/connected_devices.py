@@ -86,13 +86,16 @@ class ConnectedDevices:
         
         return None
     
-    def get_ip_with_longest_ip_prefix(self, ips: list, dest_ip: ipaddress.IPv4Address):
+    def get_ip_with_longest_ip_prefix(self, ips: list, dest_ip: ipaddress.IPv4Address, src_ip: ipaddress.IPv4Address):
         dest_ip_bin = bin(int(dest_ip))
         
         # initialise longest_matching_path as the first
         longest_matching_path_ip = (ips[0], 0)
         
         for ip in ips:
+            # dont count the src ip
+            if ip == src_ip: continue
+            
             print(f"checking ip: {ip}")
             count = 0
             neighbour_ip_bin = bin(int(ip))
@@ -101,6 +104,7 @@ class ConnectedDevices:
                 if dest_ip_bin[i] != neighbour_ip_bin[i]: break
                 
                 count += 1
+            print(f"{ip} count {count}")
             if count > longest_matching_path_ip[1]:
                 longest_matching_path_ip = (ip, count)
             

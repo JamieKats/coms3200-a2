@@ -1,0 +1,99 @@
+40499
+Sleeping between connect commands...
+Connecting to port: 44203
+Sleeping between connect commands...
+host object in greeting proto: <device.HostSwitch object at 0x7f2c568d09a0>
+<class 'packet.DiscoveryPacket'>
+True
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+in client listen thread
+<class 'packet.OfferPacket'>
+<class 'packet.AcknowledgePacket'>
+<class 'device.ClientSwitch'>
+client_listen_thread: Greeting proto with client PASSED
+in handle_location_packet
+<class 'packet.LocationPacket'>
+hosts: []
+clients: [IPv4Address('130.0.0.2')]
+False
+host ip saved in greeting proto: 135.0.0.1
+<class 'packet.RequestPacket'>
+Sleeping between connect commands...
+<class 'device.HostSwitch'>
+host_connection_thread: Greeting proto with host PASSED
+<class 'packet.LocationPacket'>
+in handle_location_packet
+hosts: [IPv4Address('135.0.0.1')]
+clients: [IPv4Address('130.0.0.2')]
+                 nieghtbour ip: 130.0.0.2
+                 nieghtbour ip: 2
+                 nieghtbour ip: 0
+<class 'packet.DistancePacket'>
+hosts: [IPv4Address('135.0.0.1')]
+clients: [IPv4Address('130.0.0.2')]
+
+
+
+dist sent back: 12
+12
+2
+packet src: 130.0.0.1
+packet dest: 130.0.0.2
+target ip: 10.0.0.1
+
+
+
+<class 'packet.DistancePacket'>
+<class 'packet.ReadyPacket'>
+data packet src: 192.168.1.2
+data packet dest: 10.0.0.6
+device distances: {IPv4Address('130.0.0.2'): [(None, 2)], IPv4Address('135.0.0.1'): [(None, 2)], IPv4Address('10.0.0.1'): [(IPv4Address('135.0.0.1'), 10)]}
+data packet data: HELLO WORLD
+hosts: [IPv4Address('135.0.0.1')]
+clients: [IPv4Address('130.0.0.2')]
+neighbours: [IPv4Address('135.0.0.1'), IPv4Address('130.0.0.2')]
+checking ip: 135.0.0.1
+135.0.0.1 count 4
+longest matching ip: 135.0.0.1
+<class 'packet.QueryPacket'>
+Sleeping between connect commands...
+
+sent packet src ip: 192.168.1.2
+sent packet dest ip: 10.0.0.6
+sent packet mode: 5
+sent packet data: HELLO WORLD
+
+<class 'packet.DataPacket'>
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+<class 'packet.ReadyPacket'>
+data packet src: 10.0.0.6
+data packet dest: 192.168.1.2
+device distances: {IPv4Address('130.0.0.2'): [(None, 2)], IPv4Address('135.0.0.1'): [(None, 2)], IPv4Address('10.0.0.1'): [(IPv4Address('135.0.0.1'), 10)]}
+data packet data: HELLO WORLD
+hosts: [IPv4Address('135.0.0.1')]
+clients: [IPv4Address('130.0.0.2')]
+neighbours: [IPv4Address('135.0.0.1'), IPv4Address('130.0.0.2')]
+checking ip: 130.0.0.2
+130.0.0.2 count 3
+longest matching ip: 130.0.0.2
+<class 'packet.QueryPacket'>
+
+sent packet src ip: 10.0.0.6
+sent packet dest ip: 192.168.1.2
+sent packet mode: 5
+sent packet data: HELLO WORLD
+
+<class 'packet.DataPacket'>
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...
+Sleeping between connect commands...

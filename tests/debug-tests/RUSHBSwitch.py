@@ -637,7 +637,9 @@ class RUSHBSwitch:
             if packet == None: return
             
             if packet.mode == pkt.DATA_05:
-                self.handle_data_packet(packet)
+                self.handle_data_packet(sender_device=device, data_packet=packet)
+            elif packet.mode == pkt.ASK_06:
+                self.handle_query_packet(neighbour=device)
             elif packet.mode == pkt.READY_07:
                 self.handle_ready_packet(packet)
             elif packet.mode == pkt.LOCATION_08:
@@ -646,9 +648,11 @@ class RUSHBSwitch:
                 self.handle_distance_packet(packet)
             elif packet.mode == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
                 self.handle_fragments(neighbour=device, fragment_packet=packet)
+            else:
+                raise Exception(f"Received unknown packet mode {packet.mode}...")
         
     
-    def handle_data_packet(self, data_packet: pkt.DataPacket):
+    def handle_data_packet(self, sender_device: device.Device, data_packet: pkt.DataPacket):
         # display data if intended for self
         if data_packet.dest_ip == self.local_ip or data_packet.dest_ip == self.global_ip:
             print(f"Received from {data_packet.src_ip}: {data_packet.data}")
@@ -704,7 +708,7 @@ class RUSHBSwitch:
             
             # get neighbour on path with greatest matching prefix of dest ip
             ips = [path[0] for path in paths]
-            selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip)
+            selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip, sender_device.ip)
             neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
             # neighbour.send_packet(packet)
             self.modify_pkt_source_and_forward_data(data_packets, neighbour)
@@ -714,7 +718,7 @@ class RUSHBSwitch:
         # ips = [device.ip for device in self.connected_devices.get_neighbours()] + [ip for ip in self.connected_devices.distance_to_devices.keys()]
         ips = [device.ip for device in self.connected_devices.get_neighbours_ips()]
         print(f"neighbours: {ips}")
-        selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip)
+        selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip, sender_device.ip)
         neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
         # neighbour.send_packet(packet)
         self.modify_pkt_source_and_forward_data(data_packets, neighbour)
@@ -777,6 +781,10 @@ class RUSHBSwitch:
             print()
             neighbour.send_packet(data_packet)
         
+        
+    def handle_query_packet(self, neighbour: device.Device):
+        ready_pkt: pkt.ReadyPacket = pkt.ReadyPacket(src_ip=self.get_my_ip_for_device(neighbour), dest_ip=neighbour.ip)
+        neighbour.send_packet(ready_pkt)
         
         
     def handle_location_packet(self, conn_device: device.Device, packet: pkt.LocationPacket):
@@ -882,7 +890,7 @@ class RUSHBSwitch:
     def handle_fragments(self, neighbour: device.Device, fragment_packet: pkt.FragmentPacket):
         # received fragment not for us, pass on like a data packet
         if fragment_packet.dest_ip != self.global_ip and fragment_packet.dest_ip != self.local_ip:
-            self.handle_data_packet(fragment_packet)
+            self.handle_data_packet(neighbour, fragment_packet)
             return
         
         # fragment is for us add to list of fragments and reconstruct
