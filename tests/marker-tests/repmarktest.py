@@ -1140,7 +1140,7 @@ def main(argv):
                 "SWITCH_ROUTING_SIMPLE",
                 "SWITCH_ROUTING_PREFIX",
                 "SWITCH_FRAGMENTATION")
-    mode_mark = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 3, 3, 3, 10, 4, 6, 4, 4, 4, 6)
+    mode_mark = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 3, 3, 3, 15, 4, 6, 4, 4, 4, 6)
 
     sys.stdout.write(f"-------------------------------------------------------------\n")
     sys.stdout.flush()
@@ -1184,7 +1184,7 @@ def main(argv):
         test_num += 1
 
     sys.stdout.write(f"-------------------------------------------------------------\n")
-    sys.stdout.write(f"TOTAL: {mark:50}/{sum(mode_mark)}\n")
+    sys.stdout.write(f"TOTAL: {mark:55}/{sum(mode_mark)}\n")
     sys.stdout.flush()
     sys.exit(mark)
 
