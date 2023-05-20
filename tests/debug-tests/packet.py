@@ -16,7 +16,7 @@ FRAGMENT_0A = 0x0a
 FRAGMENT_END_0B = 0x0b
 
 HEADER_SIZE = 12 # bytes
-
+MAX_DATA_IN_PACKET = 1488
 
 class Packet:
     
@@ -155,6 +155,7 @@ class DataPacket(Packet):
                  data
     ) -> None:
         super().__init__(mode=DATA_05, src_ip=src_ip, dest_ip=dest_ip, data=data)
+        self.data_size = len(data)
         
     def to_bytes(self):
         return super().to_bytes() + self.data.encode()
@@ -164,6 +165,7 @@ class DataPacket(Packet):
         base_packet: Packet = Packet.from_bytes(data_bytes)
         base_packet.data = data_bytes[HEADER_SIZE:].decode()
         base_packet.__class__ = DataPacket
+        base_packet.data_size = len(base_packet.data)
         return base_packet
     
 
@@ -235,7 +237,25 @@ class DistancePacket(Packet):
         base_packet.data = (og_ip, dist)
         return base_packet
     
+class FragmentPacket(Packet):
+    def __init__(
+        self, 
+        mode: int, 
+        offset: int, 
+        src_ip: ipaddress.IPv4Address, 
+        dest_ip: ipaddress.IPv4Address, 
+        data
+    ) -> None:
+        super().__init__(mode=mode, offset=offset, src_ip=src_ip, dest_ip=dest_ip, data=data)
     
+    def to_bytes(self):
+        return super().to_bytes() + self.data.encode()
+    
+    @staticmethod
+    def from_bytes(data_bytes):
+        base_packet: Packet = Packet.from_bytes(data_bytes)
+        base_packet.data = data_bytes[HEADER_SIZE:].decode()
+        return base_packet
         
     
 # def ip2long(ip):

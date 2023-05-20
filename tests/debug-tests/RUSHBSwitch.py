@@ -96,19 +96,28 @@ NEW QNS
     is this ARP??
     
     - target hostname address of traceroute command??
-    - QN 4 how many times did the 
+    - SWITCH_ROUTING_SIMPLE line 14 S1 receives dist to a new switch 136.0.0.1
+    and doesnt relay the dist back, BUT in line 15 S2 receives dist info to new 
+    switch 134.0.0.1 and relays the dist back to the person who sent to message.
+    This is straight up two conflicting responses from switches when they receive dist
+    to a new switch. I think on line 14 we receive dist of 3 to 134.0.0.1 which
+    is relayed to both S1 (line 17) and S2 (line 15)
+    - SWITCH_FORWARD_MESSAGE is example of test where the received dist is not 
+    forwarded back to the sender (line 7) where SWITCH_ROUTING_SIMPLE does forward back to sender (line 13-17)
     
 TESTS PASSED
     SWITCH_GREETING_ADAPTER
     SWITCH_DISTANCE_SWITCH
     SWITCH_GLOBAL_GREETING
+    SWITCH_FORWARD_MESSAGE
+    SWITCH_MULTI_ADAPTER
     
 TESTS TO COME BACK TO
-    SWITCH_FORWARD_MESSAGE
     SWITCH_ROUTING_SIMPLE
     SWITCH_ROUTING_PREFIX
     MINIMAP_3 (need to know if switches send other switches query/ready packets)
     SWITCH_LOCAL2_GREETING
+    SWITCH_FRAGMENTATION (no test???)
 """
 import math
 import ipaddress
@@ -636,19 +645,19 @@ class RUSHBSwitch:
             elif packet.mode == pkt.DISTANCE_09:
                 self.handle_distance_packet(packet)
             elif packet.mode == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
-                self.handle_fragments(packet)
+                self.handle_fragments(neighbour=device, fragment_packet=packet)
         
     
-    def handle_data_packet(self, packet: pkt.DataPacket):
+    def handle_data_packet(self, data_packet: pkt.DataPacket):
         # display data if intended for self
-        if packet.dest_ip == self.local_ip or packet.dest_ip == self.global_ip:
-            print(f"Received from {packet.src_ip}: {packet.data}")
+        if data_packet.dest_ip == self.local_ip or data_packet.dest_ip == self.global_ip:
+            print(f"Received from {data_packet.src_ip}: {data_packet.data}")
             return
         
-        print(f"data packet src: {packet.src_ip}")
-        print(f"data packet dest: {packet.dest_ip}")
+        print(f"data packet src: {data_packet.src_ip}")
+        print(f"data packet dest: {data_packet.dest_ip}")
         print(f"device distances: {self.connected_devices.distance_to_devices}")
-        print(f"data packet data: {packet.data}")
+        print(f"data packet data: {data_packet.data}")
         # if sending to an adapter need to check if query packet has been 
         # responded to recently, if not send another to adapter
         # dest_device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
@@ -665,48 +674,74 @@ class RUSHBSwitch:
         #         # receive ready packet
         #         ready_packet: pkt.ReadyPacket = dest_device.receive_packet()
         #         dest_device.time_last_ready_pkt = time.time()
-                
+        
+        # IF DATA PACKET > 1500B FRAGMENT
+        if data_packet.data_size > pkt.MAX_DATA_IN_PACKET:
+            data_packets = self.create_packet_fragments(data_packet)
+        else:
+            data_packets = [data_packet]
+            
                 
         
         # print("RECEVED DEST IP IS UNKNONW")
         # if packet is for someone an immediate neighbour send to them
-        neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(packet.dest_ip)
+        neighbour: device.Device = self.connected_devices.get_neighbour_with_ip(data_packet.dest_ip)
         # print(f"neightbour: {neighbour}")
         if neighbour != None:
             # neighbour.send_packet(packet)
-            self.modify_pkt_source_and_forward_data(packet, neighbour)
+            self.modify_pkt_source_and_forward_data(data_packets, neighbour)
             return
         
         # If switch aware of dest send to switch on shortest path with longest 
         # matching ip prefix
-        if packet.dest_ip in self.connected_devices.distance_to_devices.keys():
-            paths = self.connected_devices.distance_to_devices[packet.dest_ip]
+        if data_packet.dest_ip in self.connected_devices.distance_to_devices.keys():
+            paths = self.connected_devices.distance_to_devices[data_packet.dest_ip]
             if len(paths) == 1:
                 neighbour = self.connected_devices.get_neighbour_with_ip(paths[0][0])
                 # neighbour.send_packet(packet)
-                self.modify_pkt_source_and_forward_data(packet, neighbour)
+                self.modify_pkt_source_and_forward_data(data_packets, neighbour)
                 return
             
             # get neighbour on path with greatest matching prefix of dest ip
             ips = [path[0] for path in paths]
-            selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
+            selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip)
             neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
             # neighbour.send_packet(packet)
-            self.modify_pkt_source_and_forward_data(packet, neighbour)
+            self.modify_pkt_source_and_forward_data(data_packets, neighbour)
             return
             
         # if dest ip is unknown send to neighbour with longest matching ip prefix
         # ips = [device.ip for device in self.connected_devices.get_neighbours()] + [ip for ip in self.connected_devices.distance_to_devices.keys()]
         ips = [device.ip for device in self.connected_devices.get_neighbours_ips()]
         print(f"neighbours: {ips}")
-        selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, packet.dest_ip)
+        selected_ip = self.connected_devices.get_ip_with_longest_ip_prefix(ips, data_packet.dest_ip)
         neighbour = self.connected_devices.get_neighbour_with_ip(selected_ip)
         # neighbour.send_packet(packet)
-        self.modify_pkt_source_and_forward_data(packet, neighbour)
+        self.modify_pkt_source_and_forward_data(data_packets, neighbour)
         return
     
     
-    def modify_pkt_source_and_forward_data(self, data_packet: pkt.DataPacket, neighbour: device.Device):
+    def create_packet_fragments(self, data_packet: pkt.DataPacket):
+        fragments = []
+
+        data_fragmented = 0
+        while data_fragmented < data_packet.data_size:
+            data_chunk_end = min(len(data_packet.data), data_fragmented + pkt.MAX_DATA_IN_PACKET)
+            data_fragment = data_packet.data[data_fragmented:data_chunk_end]
+            
+            fragment: pkt.FragmentPacket = pkt.FragmentPacket(
+                mode=pkt.FRAGMENT_0A if data_chunk_end != len(data_packet.data) else pkt.FRAGMENT_END_0B, 
+                offset=data_fragmented,
+                src_ip=data_packet.src_ip,
+                dest_ip=data_packet.dest_ip,
+                data=data_fragment)
+            
+            data_fragment += pkt.MAX_DATA_IN_PACKET
+            fragments.append(fragment)
+        return fragments
+    
+    
+    def modify_pkt_source_and_forward_data(self, data_packets: list, neighbour: device.Device):
         """
         Modifies the src address in the packet to be the ip address the dest 
         knows me as
@@ -714,32 +749,33 @@ class RUSHBSwitch:
         Args:
             packet (pkt.DataPacket): _description_
         """
-        # check that query/ready proto has been done within 5 sec otherwise do
-        # query/ready proto before actually sending the data
-        if neighbour.is_ready_to_receive() == False:
-            # send query packet
-            query_packet: pkt.QueryPacket = pkt.QueryPacket(src_ip=self.get_my_ip_for_device(neighbour), dest_ip=neighbour.ip)
-            neighbour.send_packet(query_packet)
+        for data_packet in data_packets:
+            # check that query/ready proto has been done within 5 sec otherwise do
+            # query/ready proto before actually sending the data
+            if neighbour.is_ready_to_receive() == False:
+                # send query packet
+                query_packet: pkt.QueryPacket = pkt.QueryPacket(src_ip=self.get_my_ip_for_device(neighbour), dest_ip=neighbour.ip)
+                neighbour.send_packet(query_packet)
+                
+                # receive ready packet
+                neighbour.receive_packet()
+                
+                # set ready time
+                neighbour.set_ready_to_receive()
             
-            # receive ready packet
-            neighbour.receive_packet()
-            
-            # set ready time
-            neighbour.set_ready_to_receive()
-        
-        # print(f"device class: {neighbour.__class__}")
-        # packet.dest_ip = neighbour.ip
-        # if isinstance(neighbour, device.HostSwitch):
-        #     packet.src_ip = neighbour.my_assigned_ip
-        #     print(f"my assigned: {neighbour.my_assigned_ip}")
+            # print(f"device class: {neighbour.__class__}")
+            # packet.dest_ip = neighbour.ip
+            # if isinstance(neighbour, device.HostSwitch):
+            #     packet.src_ip = neighbour.my_assigned_ip
+            #     print(f"my assigned: {neighbour.my_assigned_ip}")
 
-        print()
-        print(f"sent packet src ip: {data_packet.src_ip}")
-        print(f"sent packet dest ip: {data_packet.dest_ip}")
-        print(f"sent packet mode: {data_packet.mode}")
-        print(f"sent packet data: {data_packet.data}")
-        print()
-        neighbour.send_packet(data_packet)
+            print()
+            print(f"sent packet src ip: {data_packet.src_ip}")
+            print(f"sent packet dest ip: {data_packet.dest_ip}")
+            print(f"sent packet mode: {data_packet.mode}")
+            print(f"sent packet data: {data_packet.data}")
+            print()
+            neighbour.send_packet(data_packet)
         
         
         
@@ -814,7 +850,7 @@ class RUSHBSwitch:
         Args:
             packet (pkt.DistancePacket): _description_
         """
-        # print(f"DKJFGBDFKJGBDFGKB {packet.data[0]}")
+        # print(f"DKJFGBDFKJGBDFGKB {packet.data}")
         dist_updated = self.connected_devices.update_distance_to_device(
             new_dist=packet.data[1], 
             device_ip=packet.data[0], 
@@ -834,7 +870,36 @@ class RUSHBSwitch:
             
             new_packet: pkt.DistancePacket = pkt.DistancePacket(src_ip=src_ip, dest_ip=dest_ip, og_ip=packet.data[0], dist=dist)
             
+            print(f"\n\n\ndist sent back: {dist}")
+            print(new_packet.data[1])
+            print(self.connected_devices.distance_to_devices[neighbour.ip][0][1])
+            print(f"packet src: {new_packet.src_ip}")
+            print(f"packet dest: {new_packet.dest_ip}")
+            print(f"target ip: {new_packet.data[0]}\n\n\n")
+            
             neighbour.send_packet(new_packet)
+            
+    def handle_fragments(self, neighbour: device.Device, fragment_packet: pkt.FragmentPacket):
+        # received fragment not for us, pass on like a data packet
+        if fragment_packet.dest_ip != self.global_ip and fragment_packet.dest_ip != self.local_ip:
+            self.handle_data_packet(fragment_packet)
+            return
+        
+        # fragment is for us add to list of fragments and reconstruct
+        if fragment_packet.mode == pkt.FRAGMENT_0A:
+            neighbour.fragments.append(fragment_packet)
+            return
+        elif fragment_packet.mode == pkt.FRAGMENT_END_0B:
+            neighbour.fragments.append(fragment_packet)
+            
+            assembled_data = []
+            for fragment in neighbour.fragments:
+                assembled_data.append(fragment.data)
+            assembled_data = "".join(assembled_data)
+            
+            print(f"Received from {str(fragment_packet.src_ip)}: {assembled_data}")
+                
+            
     
     
     def greeting_protocol_with_host(self, host: device.HostSwitch) -> bool:

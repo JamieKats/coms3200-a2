@@ -22,6 +22,7 @@ class Device:
         self.longitude: int = None
         self.euclidian_dist = None
         self.ready_to_receive = 0
+        self.fragments = []
         
     # def set_ip(self, ip: ipaddress.IPv4Address):
     #     self.ip = ip
