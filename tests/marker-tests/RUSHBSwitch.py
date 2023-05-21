@@ -317,7 +317,8 @@ class RUSHBSwitch:
         message queue
         """
         while True:
-            packet_information = udp_socket.recvfrom(BUFFER_SIZE)
+            # packet_information = udp_socket.recvfrom(BUFFER_SIZE)
+            packet_information = udp_socket.recvfrom(2000)
             packet = packet_information[0]
             addr = packet_information[1]
             
@@ -686,6 +687,10 @@ class RUSHBSwitch:
         else:
             data_packets = [data_packet]
             
+        print(data_packet.data_size > pkt.MAX_DATA_IN_PACKET)
+        print(f"\n\n\nFRAGMENTS: {len(data_packets)}\n\n\n")
+        print(f"\n\n\nFRAGMENTS DATA LEN: {len(data_packets[0].data)}\n\n\n")
+            
                 
         
         # print("RECEVED DEST IP IS UNKNONW")
@@ -741,7 +746,9 @@ class RUSHBSwitch:
                 dest_ip=data_packet.dest_ip,
                 data=data_fragment)
             
-            data_fragment += pkt.MAX_DATA_IN_PACKET
+            # print(f"\n\nFRAG MODE: {fragment.mode}\n\n")
+            
+            data_fragmented += pkt.MAX_DATA_IN_PACKET
             fragments.append(fragment)
         return fragments
     

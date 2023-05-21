@@ -15,7 +15,7 @@ import socket
 import packet as pkt
 import queue
 
-MAX_BUFFER_SIZE = 1500
+MAX_BUFFER_SIZE = 2000
 
 
 class SenderReceiver:
