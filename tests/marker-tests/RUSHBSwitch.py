@@ -750,6 +750,7 @@ class RUSHBSwitch:
             
             data_fragmented += pkt.MAX_DATA_IN_PACKET
             fragments.append(fragment)
+            
         return fragments
     
     
