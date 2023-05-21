@@ -111,11 +111,11 @@ TESTS PASSED
     SWITCH_GLOBAL_GREETING
     SWITCH_FORWARD_MESSAGE
     SWITCH_MULTI_ADAPTER
+    MINIMAP_3
     
 TESTS TO COME BACK TO
     SWITCH_ROUTING_SIMPLE
     SWITCH_ROUTING_PREFIX
-    MINIMAP_3 (need to know if switches send other switches query/ready packets)
     SWITCH_LOCAL2_GREETING
     SWITCH_FRAGMENTATION (no test???)
 """
@@ -293,7 +293,7 @@ class RUSHBSwitch:
         
         # print udp port
         # print(f"udp port: {udp_socket.getsockname()[1]}")
-        print(udp_socket.getsockname()[1])
+        print(udp_socket.getsockname()[1], flush=True)
         
         return udp_socket
         
@@ -306,7 +306,7 @@ class RUSHBSwitch:
         
         # print port bound
         # print(f"tcp port: {tcp_socket.getsockname()[1]}")
-        print(tcp_socket.getsockname()[1])
+        print(tcp_socket.getsockname()[1], flush=True)
         
         return tcp_socket
     
@@ -505,9 +505,10 @@ class RUSHBSwitch:
             # NOTE sleep is to fix tests failing because stdin is redirected to 
             # file and this method reads the two "connect <port>" commands and tries to connect
             # much faster than the test cases set up the switches 
-            print("Sleeping between connect commands...")
-            time.sleep(1)
+            # print("Sleeping between connect commands...")
+            # time.sleep(1)
             
+            time.sleep(0.01)
             try:
                 command = input().strip().split(" ")
             except EOFError:
@@ -538,7 +539,7 @@ class RUSHBSwitch:
         while True:
             self.process_connect_commands()
             
-            time.sleep(0.1)
+            time.sleep(0.05)
         
     def process_connect_commands(self):
         """

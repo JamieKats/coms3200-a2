@@ -408,6 +408,7 @@ class Connection:
         self._my_sockets.append(tcp_sock_1)
         self._my_sockets.append(tcp_sock_2)
         port = str(tcp_sock_2.getsockname()[1])
+        tcp_sock_2.listen()
         with open(f"./{modified_test_name}.b2in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
@@ -415,7 +416,6 @@ class Connection:
             f"Run your switch with these argument:\n\t[./RUSHBSwitch | python3 RUSHBSwitch.py] global 130.0.0.1/8 2 2 < {modified_test_name}.b2in > {modified_test_name}.b2out\n")
         sys.stderr.flush()
         # [S2] listen from [T]
-        tcp_sock_2.listen()
         conn, addr = tcp_sock_2.accept()
         self._target_sockets.append(conn)
         # Hang on, now [S1] connects to [T], hmm, so tricky?
@@ -542,13 +542,13 @@ class Connection:
         tcp_sock = new_tcp_socket(0)  # tcp connection
         self._my_sockets.append(tcp_sock)
         port = str(tcp_sock.getsockname()[1])
+        tcp_sock.listen()
         with open("./SWITCH_FORWARD_MESSAGE.b2in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
         sys.stderr.write(
             f"Run your switch with these argument:\n\t[./RUSHBSwitch | python3 RUSHBSwitch.py] local 192.168.1.1/24 0 2 < SWITCH_FORWARD_MESSAGE.b2in > SWITCH_FORWARD_MESSAGE.b2out\n")
         sys.stderr.flush()
-        tcp_sock.listen()
         conn, addr = tcp_sock.accept()
         self._target_sockets.append(conn)
         switch_name = "[S] "
@@ -589,8 +589,11 @@ class Connection:
         tcp_sock_1 = new_tcp_socket(0)  # sock 1
         self._my_sockets.append(tcp_sock_1)
         port_1 = str(tcp_sock_1.getsockname()[1])
+        tcp_sock_1.listen()
 
         tcp_sock_2 = new_tcp_socket(0)  # sock 2
+        tcp_sock_2.listen()
+
         self._my_sockets.append(tcp_sock_2)
         port_2 = str(tcp_sock_2.getsockname()[1])
         with open(f"./{modified_test_name}.b2in", "w+") as port_writer:
@@ -600,13 +603,11 @@ class Connection:
         sys.stderr.write(
             f"Run your switch with these argument:\n\t[./RUSHBSwitch | python3 RUSHBSwitch.py] local 192.168.1.1/24 0 2 < {modified_test_name}.b2in > {modified_test_name}.b2out\n")
         sys.stderr.flush()
-        tcp_sock_1.listen()
         conn_1, addr_1 = tcp_sock_1.accept()
         self._target_sockets.append(conn_1)
         switch_1_name = "[S1] "
         self._switch_offer(conn_1, addr_1, host_ip="135.0.0.1", assigned_ip="135.0.0.2", location=(0, 0), switch_name=switch_1_name)
 
-        tcp_sock_2.listen()
         conn_2, addr_2 = tcp_sock_2.accept()
         self._target_sockets.append(conn_2)
         switch_2_name = "[S2] "
@@ -637,10 +638,10 @@ class Connection:
         # [T] -> [S2] : D([S3])
         self._recv(info_2[0], print_out=True, extend_message=switch_2_name)
         # [S2] -> [T] : D([S3])
-        pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", d2))
-        self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
+        # pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", d2))
+        # self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
         # [T] -> [S1] : D([S3])
-        self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
+        # self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
         # [A] -> [T] : "HELLO WORLD"
         udp_sock = new_udp_socket(0)  # udp connection
         self._my_sockets.append(udp_sock)

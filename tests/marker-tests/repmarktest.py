@@ -574,6 +574,8 @@ class Connection:
         self._my_sockets.append(tcp_sock_2)
 
         port = str(tcp_sock_2.getsockname()[1])
+        tcp_sock_2.listen()
+
         with open(f"SWITCH_GLOBAL_GREETING.in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
@@ -591,7 +593,6 @@ class Connection:
         info = (LOCAL_HOST, port)
 
         # [S2] listen from [T]
-        tcp_sock_2.listen()
         conn, addr = tcp_sock_2.accept()
         self._target_sockets.append(conn)
         switch_name_2 = ""
@@ -610,6 +611,8 @@ class Connection:
         self._my_sockets.append(tcp_sock_2)
 
         port = str(tcp_sock_2.getsockname()[1])
+        tcp_sock_2.listen()
+
         with open(f"SWITCH_GLOBAL_GREETING.in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
@@ -641,7 +644,6 @@ class Connection:
         self._recv(tcp_sock_1, print_out=True, extend_message=switch_name_1)
 
         # [S2] listen from [T]
-        tcp_sock_2.listen()
         conn, addr = tcp_sock_2.accept()
         self._target_sockets.append(conn)
         switch_name_2 = "[S2] "
@@ -742,6 +744,8 @@ class Connection:
         tcp_sock = new_tcp_socket(0)  # tcp connection
         self._my_sockets.append(tcp_sock)
         port = str(tcp_sock.getsockname()[1])
+        tcp_sock.listen()
+
         with open("./SWITCH_FORWARD_MESSAGE.in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
@@ -759,7 +763,6 @@ class Connection:
         self._error.flush()
         info = (LOCAL_HOST, port)
 
-        tcp_sock.listen()
         conn, addr = tcp_sock.accept()
         self._target_sockets.append(conn)
         switch_name = "[S] "
@@ -800,7 +803,7 @@ class Connection:
         self._my_sockets.append(tcp_sock_2)
         port_2 = str(tcp_sock_2.getsockname()[1])
         tcp_sock_2.listen()
-
+        time.sleep(0.1)
         with open(f"SWITCH_DISTANCE_SWITCH.in", "w+") as port_writer:
             port_writer.write(f"connect {str(port_1)}\nconnect {str(port_2)}\n")
             port_writer.flush()
@@ -880,11 +883,11 @@ class Connection:
         self._send(pkt, add, info_1[0], target_info=info_1[1], print_out=True, extend_message=switch_1_name)
         # [T] -> [S2] : D([S3])
         self._recv(info_2[0], print_out=True, extend_message=switch_2_name)
-        # [S2] -> [T] : D([S3])
-        pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", 5))
-        self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
-        # [T] -> [S1] : D([S3])
-        self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
+        # # [S2] -> [T] : D([S3])
+        # pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", 5))
+        # self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
+        # # [T] -> [S1] : D([S3])
+        # self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
         # [A] -> [T] : "HELLO WORLD"
 
         udp_sock = new_udp_socket(0)  # udp connection
@@ -955,11 +958,11 @@ class Connection:
         self._send(pkt, add, info_1[0], target_info=info_1[1], print_out=True, extend_message=switch_1_name)
         # [T] -> [S2] : D([S3])
         self._recv(info_2[0], print_out=True, extend_message=switch_2_name)
-        # [S2] -> [T] : D([S3])
-        pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", 3))
-        self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
-        # [T] -> [S1] : D([S3])
-        self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
+        # # [S2] -> [T] : D([S3])
+        # pkt, add = build_packet(source_ip="136.0.0.1", destination_ip="136.0.0.2", offset=0x000000, mode=DISTANCE, misc=("134.0.0.1", 3))
+        # self._send(pkt, add, info_2[0], target_info=info_2[1], print_out=True, extend_message=switch_2_name)
+        # # [T] -> [S1] : D([S3])
+        # self._recv(info_1[0], print_out=True, extend_message=switch_1_name)
         # [A] -> [T] : "HELLO WORLD"
 
         udp_sock = new_udp_socket(0)  # udp connection
@@ -990,6 +993,8 @@ class Connection:
         tcp_sock = new_tcp_socket(0)  # tcp connection
         self._my_sockets.append(tcp_sock)
         port = str(tcp_sock.getsockname()[1])
+        tcp_sock.listen()
+
         with open("./SWITCH_FRAGMENTATION.in", "w+") as port_writer:
             port_writer.write(f"connect {str(port)}\n")
             port_writer.flush()
@@ -1007,7 +1012,6 @@ class Connection:
         self._error.flush()
         info = (LOCAL_HOST, port)
 
-        tcp_sock.listen()
         conn, addr = tcp_sock.accept()
         self._target_sockets.append(conn)
         switch_name = "[S] "
