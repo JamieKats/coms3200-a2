@@ -1,9 +1,12 @@
 """
-Stores mappings of all connected clients and hosts to group together all 
-functionality involving: 
-    - finding hosts/clients
-    - storing distances to devices
-    - prefix matching ip in a packets with known ips
+The University of Queensland
+Semester 1 2023 COMS3200 Assignment 2 Part C
+
+author: Jamie Katsamatsas 
+student id: 46747200
+
+This file contains collections used to store hosts and clients connected to the 
+switch, and methods that act on these collections.
 """
 import device
 import ipaddress
@@ -18,25 +21,37 @@ class ConnectedDevices:
         # to the correct adapter before they have been given their ip
         self.seen_adapters: dict = {}
     
-    def add_new_connection(self, new_device: device.Device):
+    
+    def add_new_connection(self, new_device: device.Device) -> None:
         """
-        NOTE At time this method is called the new_device may not have had an ip assigned yet
-
+        Adds the given device to the client or host list it belongs in.
+        
         Args:
-            new_device (device.Device): _description_
+            new_device (device.Device): Device to add to the host or clients 
+            lists
         """
-        print(new_device.__class__)
         if isinstance(new_device, device.ClientDevice):
             self.clients.append(new_device)
         if isinstance(new_device, device.HostSwitch):
             self.hosts.append(new_device)
 
-    def get_udp_client_with_addr(self, addr):
+
+    def get_udp_client_with_addr(self, addr: tuple) -> device.ClientAdapter:
+        """
+        Gets the udp client from the list of clients that has the address given.
+
+        Args:
+            addr (tuple): UDP address of the client to return
+
+        Returns:
+            device.ClientAdapter: Adapter instance that has the addr given. None
+            if it doesn't exist.
+        """
         for client in self.clients:
-            # print(isinstance(client, device.ClientAdapter))
             if isinstance(client, device.ClientAdapter) and client.socket_addr == addr:
                 return client
         return None
+    
     
     def update_distance_to_device(
         self, 
@@ -44,36 +59,67 @@ class ConnectedDevices:
         device_ip: ipaddress.IPv4Address, 
         via_device:ipaddress.IPv4Address=None
     ) -> bool:
+        """
+        Updates the collection of shortest known distances to known ips.
+        
+        If the given distance is shorter than or equal to the currently known 
+        distance the new distance is saved. Otherwise ignored. 
+
+        Args:
+            new_dist (int): distance to the given device
+            device_ip (ipaddress.IPv4Address): device to which we are given a 
+            distance to
+            via_device (ipaddress.IPv4Address, optional): Device along the 
+            shortest distance to the device we are saving. Defaults to None.
+
+        Returns:
+            bool: True if the distance given was added to the list of known 
+            shortest paths. False otherwise.
+        """
+        # if device not currently known add to list without any further checks
         if device_ip not in self.distance_to_devices.keys():
             self.distance_to_devices[device_ip] = [(via_device, new_dist)]
-            # print(f"conn devices: added device info to known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return True
         
         # get list of current paths with same length, can be multiple but will
         # be one most of the time
-        current_paths: list = self.distance_to_devices[device_ip]
+        known_paths: list = self.distance_to_devices[device_ip]
         
-        if new_dist > current_paths[0][1] or new_dist > 1000:
+        # if current known path is shorter than the new distance or the new 
+        # distance is > 1000 return early
+        if new_dist > known_paths[0][1] or new_dist > 1000:
             return False
         
         # if new dist is same as current dist, append to list of paths
-        if new_dist == current_paths[0][1]:
+        if new_dist == known_paths[0][1]:
             self.distance_to_devices[device_ip].append((via_device, new_dist))
-            # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             return True
         
-        self.distance_to_devices[device_ip] = (via_device, new_dist)
+        # if new dist is shorter than current paths update paths
+        self.distance_to_devices[device_ip] = [(via_device, new_dist)]
         return True
-        # print(f"conn devices: updated device info in known distances: {device_ip} -> {self.distance_to_devices[device_ip]}")
             
             
-    def get_neighbours_ips(self):
-        print(f"hosts: {[x.ip for x in self.hosts]}")
-        print(f"clients: {[x.ip for x in self.clients]}")
+    def get_neighbours_ips(self) -> list:
+        """
+        Return the known host and client neighbours.
+
+        Returns:
+            list: host and client neighbours
+        """
         return self.hosts + self.clients
     
     
-    def get_neighbour_with_ip(self, ip: ipaddress.IPv4Address):
+    def get_neighbour_with_ip(self, ip: ipaddress.IPv4Address) -> device.Device:
+        """
+        Returns the neighbour device instance that has the ip given.
+
+        Args:
+            ip (ipaddress.IPv4Address): ip of device to return
+
+        Returns:
+            device.Device: device with the matching ip
+        """
         host: device.Device
         for host in self.hosts:
             if host.ip == ip:
@@ -86,7 +132,28 @@ class ConnectedDevices:
         
         return None
     
-    def get_ip_with_longest_ip_prefix(self, ips: list, dest_ip: ipaddress.IPv4Address, src_ip: ipaddress.IPv4Address):
+    def get_ip_with_longest_ip_prefix(
+        self, 
+        ips: list, 
+        dest_ip: ipaddress.IPv4Address, 
+        src_ip: ipaddress.IPv4Address
+    ) -> ipaddress.IPv4Address:
+        """
+        Returns the ip that has the longest matching prefix of bytes to the 
+        given ip from the provided list of ips.
+        
+        The ip addresses are converted to bit format and the ip that has the 
+        longest prefixed bits matching is returned.
+        
+        Args:
+            ips (list): list of ips to do prefix matching on
+            dest_ip (ipaddress.IPv4Address): ip to do prefix matching against
+            src_ip (ipaddress.IPv4Address): source ip of the packet we are 
+            matching against
+
+        Returns:
+            ipaddress.IPv4Address: ip address with the longest ip prefix match.
+        """
         dest_ip_bin = bin(int(dest_ip))
         
         # initialise longest_matching_path as the first
@@ -96,7 +163,6 @@ class ConnectedDevices:
             # dont count the src ip
             if ip == src_ip: continue
             
-            print(f"checking ip: {ip}")
             count = 0
             neighbour_ip_bin = bin(int(ip))
             
@@ -104,9 +170,7 @@ class ConnectedDevices:
                 if dest_ip_bin[i] != neighbour_ip_bin[i]: break
                 
                 count += 1
-            print(f"{ip} count {count}")
             if count > longest_matching_path_ip[1]:
                 longest_matching_path_ip = (ip, count)
             
-        print(f"longest matching ip: {longest_matching_path_ip[0]}")
         return longest_matching_path_ip[0]
