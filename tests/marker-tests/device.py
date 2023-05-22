@@ -33,9 +33,11 @@ class Device:
         self.longitude = longitude  
         
     def receive_packet(self) -> pkt.Packet:
+        print("receving tcp packet")
         return SenderReceiver.receive_packet_tcp(conn_socket=self.conn_socket)
         
     def send_packet(self, packet: pkt.Packet):
+        # print(f"send_packet socket:{self.ip}:{self.conn_socket}")
         SenderReceiver.send_packet_tcp(packet=packet, conn_socket=self.conn_socket)
         
     def set_ready_to_receive(self) -> None:
@@ -70,6 +72,7 @@ class ClientAdapter(ClientDevice):
         self.packet_queue = queue.Queue()
         
     def receive_packet(self) -> pkt.Packet:
+        print("receving udp packet")
         return SenderReceiver.receive_packet_udp(self.packet_queue)
     
     def send_packet(self, packet: pkt.Packet):

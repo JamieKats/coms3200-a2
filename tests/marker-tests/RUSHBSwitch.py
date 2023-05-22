@@ -18,6 +18,7 @@ import queue
 import time
 import packet as pkt
 from connected_devices import ConnectedDevices
+from sender_receiver import SenderReceiver
 
 HOST_IP = "127.0.0.1"
 MAX_LAT_LONG = 32767
@@ -183,6 +184,7 @@ class RUSHBSwitch:
         client_addr = next(self.global_ip_addrs_iter)
         return client_addr if client_addr != self.global_ip else next(self.global_ip_addrs_iter)
     
+    
     def get_local_client_ip(self) -> ipaddress.IPv4Address:
         """
         Returns the address given to the UDP client.
@@ -247,7 +249,6 @@ class RUSHBSwitch:
 
             # create adapterClient instance only if client doesnt already exist
             existing_adapter = self.connected_devices.seen_adapters.get(addr)
-            print(f"exiosting adapet: {existing_adapter}")
             if existing_adapter is not None: # adapter already exists
                 existing_adapter.packet_queue.put(packet)
                 continue
@@ -263,6 +264,7 @@ class RUSHBSwitch:
                 daemon=True
             )
             adapter_client_thread.start()
+            print(f"CREATED UDP CLIENT THREAD: {adapter_client_thread.ident}")
             
         
     def listen_tcp_socket_thread(self, tcp_socket: socket.socket) -> None:
@@ -277,18 +279,19 @@ class RUSHBSwitch:
             try:
                 conn_socket, _ = tcp_socket.accept()
             except OSError:
+                print("Error connecting to socket")
                 return
             
             # create client connection instance
             client = device.ClientSwitch(conn_socket)
             
             # create thread to handle client incoming messages
-            client_listener_thread = threading.Thread(
+            client_listener_thread: threading.Thread = threading.Thread(
                 target=self.client_listen_thread,
                 args=(client, ),
                 daemon=True)
-            
             client_listener_thread.start()
+            (f"tcp socket client thread created: {client_listener_thread.ident}")
             
             
     def client_listen_thread(self, client: device.Device) -> None:
@@ -357,6 +360,7 @@ class RUSHBSwitch:
             args=(self.incoming_stdin_queue, ),
             daemon=True)
         stdin_thread.start()
+        print(f"stdin listen thread created: {stdin_thread.ident}")
         
         
     def stdin_listener_thread(self, incoming_stdin_queue: queue.Queue) -> None:
@@ -396,7 +400,7 @@ class RUSHBSwitch:
         """
         while True:
             self.process_connect_commands()
-            time.sleep(0.05)
+            time.sleep(0.01)
 
         
     def process_connect_commands(self) -> None:
@@ -409,19 +413,21 @@ class RUSHBSwitch:
             except queue.Empty:
                 return
             
-            switch_socket = self.connect_to_switch(port)
+            switch_socket: socket.socket = self.connect_to_switch(port)
             if switch_socket == None:
                 continue
             
             # create client switch object
+            print(f"creating host instance on port: {switch_socket.getsockname()}")
             host = device.HostSwitch(conn_socket=switch_socket)
             
-            host_conn_thread = threading.Thread(
+            host_conn_thread: threading.Thread = threading.Thread(
                 target=self.host_connection_thread,
                 args=(host, ),
                 daemon=True
             )
             host_conn_thread.start()
+            print(f"created host switch thread: {host_conn_thread.ident}")
             
             
     def connect_to_switch(self, port: int) -> socket.socket:
@@ -438,7 +444,9 @@ class RUSHBSwitch:
         try:
             switch_socket.connect((HOST_IP, port))
         except ConnectionRefusedError:
+            print(f"Connection refused for host {HOST_IP, port}")
             return None
+        print(f"Successfully connected to tcp port: {switch_socket.getsockname()}")
         return switch_socket
     
     
@@ -450,6 +458,7 @@ class RUSHBSwitch:
         Args:
             host (device.HostSwitch): connected host device
         """
+        print(f"top of host connection thread socket is: {host.conn_socket.getsockname()}")
         greeting_success = self.greeting_protocol_with_host(host)
         if greeting_success == False: 
             return
@@ -474,9 +483,12 @@ class RUSHBSwitch:
         Raises:
             Exception: the packet receved is of an unknown type
         """
+        print(f"Listening for packets from socket: {device.conn_socket}")
         while True:
             try:
+                print("before getting packet")
                 packet = device.receive_packet()
+                print(f"got packet on thread {threading.get_ident()} for device {device.ip}")
             except ConnectionResetError:
                 return
             
@@ -487,15 +499,16 @@ class RUSHBSwitch:
             elif packet.mode == pkt.ASK_06:
                 self.handle_query_packet(neighbour=device)
             elif packet.mode == pkt.READY_07:
-                self.handle_ready_packet(packet)
+                self.handle_ready_packet(conn_device=device, ready_packet=packet)
             elif packet.mode == pkt.LOCATION_08:
                 self.handle_location_packet(conn_device=device, packet=packet)
             elif packet.mode == pkt.DISTANCE_09:
                 self.handle_distance_packet(packet)
             elif packet.mode == pkt.FRAGMENT_0A or packet.data == pkt.FRAGMENT_END_0B:
                 self.handle_fragments(neighbour=device, fragment_packet=packet)
-            else:
-                raise Exception(f"Received unknown packet mode {packet.mode}...")
+            # else:
+            #     raise Exception(f"Received unknown packet mode {packet.mode}...")
+            print("going back to top of process_incoming_packets")
         
     
     def handle_data_packet(
@@ -601,12 +614,25 @@ class RUSHBSwitch:
                 # send query packet
                 query_packet: pkt.QueryPacket = pkt.QueryPacket(src_ip=self.get_my_ip_for_device(neighbour), dest_ip=neighbour.ip)
                 neighbour.send_packet(query_packet)
+                print(f"SENT QUERY PACKET to {neighbour.ip}:{neighbour.conn_socket}")
+                print(f"ON thread: {threading.get_ident()}")
                 
                 # receive ready packet
-                neighbour.receive_packet()
+                print(False)
+                # ready_pkt: pkt.ReadyPacket = neighbour.receive_packet()
+                print(True)
+                # ready_packet = SenderReceiver.receive_packet_tcp(neighbour.conn_socket)
+                while neighbour.is_ready_to_receive() == False:
+                    time.sleep(0.01)
+                
+                # if ready_pkt.mode != pkt.READY_07:
+                #     print("kdsfgjdfvghjgfvdkhfgvk")
+                #     raise Exception(f"Did not receive a ready packet, got {ready_pkt.mode} instead...")
+                # print(f"Got ready pkt from {neighbour.ip}")
                 
                 # set ready time
-                neighbour.set_ready_to_receive()
+                # print("setting neighbour as ready to receive")
+                # neighbour.set_ready_to_receive()
 
             neighbour.send_packet(data_packet)
         
@@ -615,6 +641,22 @@ class RUSHBSwitch:
         ready_pkt: pkt.ReadyPacket = pkt.ReadyPacket(
             src_ip=self.get_my_ip_for_device(neighbour), dest_ip=neighbour.ip)
         neighbour.send_packet(ready_pkt)
+        
+    
+    def handle_ready_packet(
+        self, 
+        conn_device: device.Device,
+        ready_packet: pkt.ReadyPacket
+    ) -> None:
+        """
+        Have received a ready packet from a neighbour. The original query 
+        packet was sent to the neighbour on a different thread.
+
+        Args:
+            conn_device (device.Device): _description_
+            ready_packet (pkt.ReadyPacket): _description_
+        """
+        conn_device.set_ready_to_receive()
         
         
     def handle_location_packet(
@@ -767,6 +809,8 @@ class RUSHBSwitch:
             bool: True if the greeting protocol was successful, False otherwise.
         """
         discovery_pkt = pkt.DiscoveryPacket()
+        print(f"send discovery pkt to : {host.conn_socket.getsockname()}")
+        
         host.send_packet(discovery_pkt)
         
         # receive offer packet: assign ip to host instance and save ip assigned to you
@@ -815,7 +859,7 @@ class RUSHBSwitchLocal(RUSHBSwitch):
             args=(udp_socket, ),
             daemon=True)
         udp_listener_thread.start()
-        
+        print(f"SETTING UP LOCAL SWITCH PORTS on thread: {udp_listener_thread.ident}")
         return
     
     
@@ -866,6 +910,7 @@ class RUSHBSwitchMixed(RUSHBSwitch):
             args=(tcp_socket, ),
             daemon=True)
         tcp_listener_thread.start()
+        print("SETTING UP MIXED SWITCH PORTS")
         
 
 class RUSHBSwitchGlobal(RUSHBSwitch):
@@ -888,12 +933,14 @@ class RUSHBSwitchGlobal(RUSHBSwitch):
     def setup_listening_ports(self):
         #################### SET UP TCP LISTENER FOR SWITCHES
         tcp_socket = self.init_tcp_socket()
-        
+        print(f"global conn on tcp soc:{tcp_socket.getsockname()}:{tcp_socket}")
         tcp_listener_thread = threading.Thread(
             target=self.listen_tcp_socket_thread,
             args=(tcp_socket, ),
             daemon=True)
         tcp_listener_thread.start()
+        print(f"main thread: {threading.get_ident()}")
+        print(f"SETTING UP GLOBAL SWITCH PORTS on thread: {tcp_listener_thread.ident}")
         
         
     def setup_command_line(self):

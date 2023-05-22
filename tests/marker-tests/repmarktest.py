@@ -271,9 +271,11 @@ class Connection:
                     if expected[i].strip() != output[i].strip():
                         self._assert(False, f'\tMissing {expected[i]}')
         except AssertionError as e:
+            print(f"assertion error: {e}")
             err = e.args[0] + '\n'
             result = "FAIL"
-        except:
+        except Exception as e:
+            print(f"exception: {e}")
             if "EXEC" not in test_name and "GET_PORT" not in test_name:
                 result = "ERROR"
         sys.stdout.write(f'Test {id_test:02} - {test_name:30} :{result:10}')

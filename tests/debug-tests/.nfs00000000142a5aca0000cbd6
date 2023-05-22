@@ -1,0 +1,42 @@
+42967
+receving tcp packet
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f115f8>
+packet bytes: b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00'
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f11748>
+packet bytes: b'\x00\x00\x00\x00\x82\x00\x00\x01\x00\x00\x00\x03\x82\x00\x00\x02'
+Listening for packets from socket: <socket.socket fd=4, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 42967), raddr=('127.0.0.1', 37943)>
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f11828>
+packet bytes: b'\x82\x00\x00\x02\x82\x00\x00\x01\x00\x00\x00\x08\x00\x02\x00\x00'
+going back to top of process_incoming_packets
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f11748>
+packet bytes: b'\x87\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x87\x00\x00\x02'
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f11710>
+packet bytes: b'\x87\x00\x00\x01\x87\x00\x00\x02\x00\x00\x00\x04\x87\x00\x00\x02'
+Listening for packets from socket: <socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 57448), raddr=('127.0.0.1', 34221)>
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f115c0>
+packet bytes: b'\x87\x00\x00\x01\x87\x00\x00\x02\x00\x00\x00\x08\x00\x00\x00\x02'
+going back to top of process_incoming_packets
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f113c8>
+packet bytes: b'\x87\x00\x00\x01\x87\x00\x00\x02\x00\x00\x00\t\n\x00\x00\x01\x00\x00\x00\n'
+going back to top of process_incoming_packets
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f113c8>
+packet bytes: b'\x82\x00\x00\x02\x82\x00\x00\x01\x00\x00\x00\x06'
+going back to top of process_incoming_packets
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f117b8>
+packet bytes: b'\xc0\xa8\x01\x02\n\x00\x00\x06\x00\x00\x00\x05HELLO WORLD'
+neighbours: [IPv4Address('135.0.0.1'), IPv4Address('130.0.0.2')]
+SENT QUERY PACKET to 135.0.0.1:<socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 57448), raddr=('127.0.0.1', 34221)>
+False
+receving tcp packet
+packet in _decode: <packet.Packet object at 0x7f0150f11978>
+packet bytes: b'\x87\x00\x00\x01\x87\x00\x00\x02\x00\x00\x00\x07'
+In process_incoming_packets got ready packet from 7: 135.0.0.1: <socket.socket fd=5, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=0, laddr=('127.0.0.1', 57448), raddr=('127.0.0.1', 34221)>

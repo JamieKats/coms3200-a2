@@ -73,11 +73,14 @@ class SenderReceiver:
             pkt.Packet: the packet object read from the TCP socket
         """
         try:
-            packet_bytes = conn_socket.recv(MAX_BUFFER_SIZE)
-        except OSError:
+            packet_bytes: socket.socket = conn_socket.recv(MAX_BUFFER_SIZE)
+        except OSError as e:
+            print(f"Error has occured when receiving tcp packet: {e}: PORT {conn_socket.getsockname()}")
             return None
         
-        if packet_bytes == b'': return None
+        if packet_bytes == b'': 
+            print("We receved b'' from tcp recevie")
+            return None
 
         return _decode_packet(packet_bytes)
     
@@ -109,6 +112,8 @@ def _decode_packet(packet_bytes: bytes) -> pkt.Packet:
         pkt.Packet: packet instance created from the packet_bytes given
     """
     packet_header: pkt.Packet = pkt.Packet.from_bytes(packet_bytes)
+    # print(f"packet in _decode: {packet_header}")
+    # print(f"packet bytes: {packet_bytes}")
     
     if packet_header.mode == pkt.DISCOVERY_01:
         packet = pkt.DiscoveryPacket.from_bytes(packet_bytes)
