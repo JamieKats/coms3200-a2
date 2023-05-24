@@ -141,10 +141,10 @@ class Adapter():
         dest = user_input_split[1]
         data = user_input_split[2]
         # Create packet and send
-        if command in 'send' and data[0] == '"' and data[len(data) - 1] == '"':
-            data_packet = self.create_packet(mode=DATA_05, source_ip=str(self.ip), dest_ip=dest, 
-                    data=data[1:(len(data) - 1)])
-            self.adapter.sendto(data_packet, (LOCAL_HOST, self.switch_num))
+        #if command in 'send' and data[0] == '"' and data[len(data) - 1] == '"':
+        data_packet = self.create_packet(mode=DATA_05, source_ip=str(self.ip), dest_ip=dest, data=data)
+        #data=data[1:(len(data) - 1)])
+        self.adapter.sendto(data_packet, (LOCAL_HOST, self.switch_num))
 
 
     def run(self):
