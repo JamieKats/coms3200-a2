@@ -174,59 +174,32 @@ class Connection:
             traceback.print_exc(file=sys.stderr)
             assert False, f"Error while sending a message to a socket."
 
-    # def _recv(self, sock, print_out=False, extend_message=""):
-    #     try:
-    #         raw_data, info = sock.recvfrom(RECV_SIZE)
-    #     except:
-    #         traceback.print_exc(file=sys.stderr)
-    #         assert False, f"Error while receiving a message from a socket."
-    #     try:
-    #         mode = raw_data[11]
-    #         pkt = RUSH(raw_data[:12])
-    #         left_over = raw_data[12:]
-    #         if mode in (DISCOVERY, OFFER, REQUEST, ACKNOWLEDGE):
-    #             additional = RUSHIp(left_over)
-    #         elif mode in (DATA, MORE_FRAG, END_FRAG, INVALID):
-    #             additional = left_over
-    #         elif mode == LOCATION:
-    #             additional = RUSHLocation(left_over)
-    #         elif mode is DISTANCE:
-    #             additional = RUSHDistance(left_over)
-    #         else:
-    #             pkt = RUSH(raw_data)
-    #             additional = ""
-    #         if print_out:
-    #             self._print(pkt, additional, f"{extend_message}Received: ")
-    #         return pkt, additional, info
-    #     except:
-    #         traceback.print_exc(file=sys.stderr)
-    #         assert False, "Could not decode packet: " + repr(raw_data)
-    
-    def _recv(self, sock, print_out=False, extend_message="", size=RECV_SIZE):
+    def _recv(self, sock, print_out=False, extend_message=""):
         try:
-            raw_data, info = sock.recvfrom(size)
+            raw_data, info = sock.recvfrom(RECV_SIZE)
         except:
-            traceback.print_exc(file=self._error)
+            traceback.print_exc(file=sys.stderr)
             assert False, f"Error while receiving a message from a socket."
         try:
             mode = raw_data[11]
             pkt = RUSH(raw_data[:12])
             left_over = raw_data[12:]
             if mode in (DISCOVERY, OFFER, REQUEST, ACKNOWLEDGE):
-                additional = RUSHIp(left_over[:4])
+                additional = RUSHIp(left_over)
             elif mode in (DATA, MORE_FRAG, END_FRAG, INVALID):
-                additional = left_over[:1488]
+                additional = left_over
             elif mode == LOCATION:
-                additional = RUSHLocation(left_over[:4])
+                additional = RUSHLocation(left_over)
             elif mode is DISTANCE:
-                additional = RUSHDistance(left_over[:8])
+                additional = RUSHDistance(left_over)
             else:
+                pkt = RUSH(raw_data)
                 additional = ""
             if print_out:
                 self._print(pkt, additional, f"{extend_message}Received: ")
             return pkt, additional, info
         except:
-            traceback.print_exc(file=self._error)
+            traceback.print_exc(file=sys.stderr)
             assert False, "Could not decode packet: " + repr(raw_data)
 
     def _print(self, pkt, additional, init=""):
@@ -707,55 +680,6 @@ class Connection:
         self.switch_routing_simple(test_name="SWITCH_ROUTING_PREFIX", data_destination="129.0.0.1", d1=5, d2=3)
 
 
-    def switch_fragmentation(self, modified_test_name="SWITCH_FRAGMENTATION"):
-        # python3 RUSHB.py -m SWITCH_FRAGMENTATION -o SWITCH_FRAGMENTATION.bout
-        
-        
-        tcp_sock = new_tcp_socket(0)  # tcp connection
-        self._my_sockets.append(tcp_sock)
-        port = str(tcp_sock.getsockname()[1])
-        tcp_sock.listen()
-
-        with open("./SWITCH_FRAGMENTATION.b2in", "w+") as port_writer:
-            port_writer.write(f"connect {str(port)}\n")
-            port_writer.flush()
-            
-        sys.stderr.write(
-            f"Run your switch with these argument:\n\t[./RUSHBSwitch | python3 RUSHBSwitch.py] local 192.168.1.1/24 0 2 < {modified_test_name}.b2in > {modified_test_name}.b2out\n"
-            )
-        sys.stderr.flush()
-        
-        conn, addr = tcp_sock.accept()
-        self._target_sockets.append(conn)
-        switch_name = "[S] "
-        self._switch_offer(conn, addr, host_ip="130.0.0.1", assigned_ip="130.0.0.2", switch_name=switch_name)
-        pkt, add = build_packet(source_ip="130.0.0.1", destination_ip="130.0.0.2", offset=0x000000, mode=DISTANCE, misc=("20.0.0.1", 10))
-        self._send(pkt, add, conn, target_info=addr, print_out=True, extend_message=switch_name)
-
-        udp_sock = new_udp_socket(0)  # udp connection
-        self._my_sockets.append(udp_sock)
-        adapter_name = "[A] "
-        file_path = f"{modified_test_name}.b2out"
-        info = get_info_file(file_path)
-        
-        pkt, add = build_packet(source_ip="0.0.0.0", destination_ip="0.0.0.0", offset=0x000000, mode=DISCOVERY, misc="0.0.0.0")
-        self._send(pkt, add, udp_sock, target_info=info, print_out=True, extend_message=adapter_name)
-        self._recv(udp_sock, print_out=True, extend_message=adapter_name)
-        pkt, add = build_packet(source_ip="0.0.0.0", destination_ip="192.168.1.1", offset=0x000000, mode=REQUEST, misc="192.168.1.2")
-        self._send(pkt, add, udp_sock, target_info=info, print_out=True, extend_message=adapter_name)
-        self._recv(udp_sock, print_out=True, extend_message=adapter_name)
-        payload = 'a' * 1500
-        pkt, add = build_packet(source_ip="192.168.1.2", destination_ip="135.0.0.1", offset=0x000000, mode=DATA, misc=payload)
-        self._send(pkt, add, udp_sock, target_info=info, print_out=True, extend_message=adapter_name)
-
-        # tcp connection
-        self._recv(conn, print_out=True, extend_message=switch_name)
-        pkt, add = build_packet(source_ip="130.0.0.1", destination_ip="130.0.0.2", offset=0x000000, mode=AVAILABLE)
-        self._send(pkt, add, conn, target_info=info, print_out=True, extend_message=switch_name)
-        self._recv(conn, print_out=True, extend_message=switch_name, size=1500)
-        self._recv(conn, print_out=True, extend_message=switch_name)
-
-
 ADAPTER_GREETING = [Connection.adapter_greeting]
 ADAPTER_SENDING = [Connection.adapter_sending]
 ADAPTER_RECEIVING = [Connection.adapter_receiving]
@@ -772,7 +696,6 @@ SWITCH_ROUTING_PREFIX = [Connection.switch_routing_prefix]
 
 SWITCH_GLOBAL_GREETING = [Connection.switch_global_greeting]
 SWITCH_LOCAL2_GREETING = [Connection.switch_local2_greeting]
-SWITCH_FRAGMENTATION = [Connection.switch_fragmentation]
 
 MINIMAP_3 = [Connection.minimap_3]
 
@@ -803,8 +726,7 @@ def main(argv):
                     'SWITCH_GLOBAL_GREETING': SWITCH_GLOBAL_GREETING,
                     'MINIMAP_3': MINIMAP_3,
                     'SWITCH_LOCAL2_GREETING': SWITCH_LOCAL2_GREETING,
-                    'SWITCH_MULTI_ADAPTER': SWITCH_MULTI_ADAPTER,
-                    'SWITCH_FRAGMENTATION': SWITCH_FRAGMENTATION
+                    'SWITCH_MULTI_ADAPTER': SWITCH_MULTI_ADAPTER
                     }.get(argv[i + 2].upper(), ADAPTER_GREETING)
         elif arg == '-o':
             output = open(argv[i + 2], "w")

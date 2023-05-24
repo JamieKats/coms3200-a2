@@ -6,6 +6,9 @@ author: Jamie Katsamatsas
 student id: 46747200
 
 This file implements methods to send and receive packets for TCP and UDP.
+
+NOTE: Most of this files methods have been resused/repurposed from my
+A1 submission
 """
 import socket
 import queue
